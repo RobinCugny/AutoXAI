@@ -5,7 +5,7 @@ from bayes_opt import BayesianOptimization
 from XAI_solutions import set_up_explainer, get_local_exp
 from evaluation_measures import evaluate,linear_scalarization
 
-def get_parameters(xai_sol, score_hist, hpo, context):
+def get_parameters(xai_sol, score_hist, hpo, properties_list, context):
     parameters = {}
 
     if hpo == 'random':
@@ -21,6 +21,10 @@ def get_parameters(xai_sol, score_hist, hpo, context):
                 parameters['l1_reg'] = rand()
             if parameters['l1_reg'] == 'num_features(int)':
                 parameters['l1_reg'] = 'num_features('+str(randint(1,context["X"].shape[1]))+')'
+        if 'simplicity' in properties_list:
+            parameters['nfeatures'] = randint(1,len(context["feature_names"]))
+        else:
+            parameters['nfeatures'] = len(context["feature_names"])
 
     if hpo == "default":
         if xai_sol == 'LIME':
@@ -29,16 +33,16 @@ def get_parameters(xai_sol, score_hist, hpo, context):
             parameters['summarize'] = "KernelExplainer"
             parameters['nsamples'] = 2048
             parameters['l1_reg'] = "auto"
+        parameters['nfeatures'] = len(context["feature_names"])
     return parameters
 
-def gp_optimization(xai_sol, score_hist, properties_list, context, epochs, weights):
+def gp_optimization(xai_sol, score_hist, properties_list, context, epochs):
     pbounds = {}
-    init_points = 5**len(pbounds)
     if xai_sol=='LIME':
-        pbounds = {'num_samples': (10, 10000)}#use utils
+        pbounds = {'num_samples': (10, 10000), 'nfeatures':(1,len(context["feature_names"]))}#use utils
 
-        def f(num_samples):
-            parameters = {'num_samples':int(num_samples)}
+        def f(num_samples,nfeatures):
+            parameters = {'num_samples':int(num_samples),'nfeatures':int(np.round(nfeatures))}
 
             for property in properties_list:
                 property_score = evaluate(xai_sol, parameters, property, context)
@@ -48,15 +52,16 @@ def gp_optimization(xai_sol, score_hist, properties_list, context, epochs, weigh
             return score
 
     if xai_sol=='SHAP':
-        pbounds = {'summarize':(0,1),'nsamples': (10, 2048), 'l1_reg':(0,3), 'num_features':(1,context["X"].shape[1])}
-
-        def f(summarize, nsamples, l1_reg, num_features):
+        pbounds = {'summarize':(0,1),'nsamples': (10, 2048), 'l1_reg':(0,3), 'num_features':(1,len(context["feature_names"])), 'nfeatures':(1,len(context["feature_names"]))}
+        #num_features is for l1_reg and nfeatures for size of explanation vector
+        def f(summarize, nsamples, l1_reg, num_features, nfeatures):
             parameters = {}
             parameters['nsamples'] = int(nsamples)
             parameters['summarize'] = hp_possible_values["SHAP"]["summarize"][int(np.round(summarize))]
             parameters['l1_reg'] = hp_possible_values["SHAP"]["l1_reg"][int(np.round(l1_reg))]
+            parameters['nfeatures'] = int(np.round(nfeatures))
             if parameters['l1_reg'] == 'num_features(int)':
-                parameters['l1_reg'] = 'num_features('+str(num_features)+')'
+                parameters['l1_reg'] = 'num_features('+str(int(np.round(num_features)))+')'
 
             for property in properties_list:
                 property_score = evaluate(xai_sol, parameters, property, context)
@@ -65,6 +70,8 @@ def gp_optimization(xai_sol, score_hist, properties_list, context, epochs, weigh
             score = score_hist["aggregated_score"][-1]
             return score
     
+    init_points = 3*len(pbounds)#TODO find better init (square is better but expensive)
+
     optimizer = BayesianOptimization(
         f=f,
         pbounds=pbounds,

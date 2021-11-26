@@ -48,4 +48,4 @@ def get_local_exp(xai_sol, x, parameters, context):
 
         e = explainer.shap_values(x,nsamples=nsamples,l1_reg=l1_reg)
 
-    return e
+    return e[:parameters['nfeatures']]

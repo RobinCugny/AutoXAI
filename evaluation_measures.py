@@ -79,10 +79,10 @@ def compute_infidelity(xai_sol, parameters, context):
         pertubation_diff = []
         for j in range(2):
             x0 = x + np.random.rand(len(x))*2*eps-eps
-            exp = get_local_exp(xai_sol, x, parameters, context)
+            exp = get_local_exp(xai_sol, x, parameters, context)[:parameters['nfeatures']]
             # exp0 = get_local_exp(xai_sol, x, parameters, context)
-            exp_x = np.matmul(x,np.asarray(exp).T)
-            exp_x0 = np.matmul(x0,np.asarray(exp).T)
+            exp_x = np.matmul(x[:parameters['nfeatures']],np.asarray(exp).T)
+            exp_x0 = np.matmul(x0[:parameters['nfeatures']],np.asarray(exp).T)
             pred_x = model.predict(x.reshape(1, -1))[0]
             pred_x0 = model.predict(x0.reshape(1, -1))[0]
             pertubation_diff.append((exp_x-exp_x0-(pred_x-pred_x0))**2)
@@ -102,6 +102,9 @@ def evaluate(xai_sol, parameters, property, context):
     if property == 'fidelity':
         if context['question']=="Why":
             score = compute_infidelity(xai_sol, parameters, context)
+    if property == 'simplicity':
+        if context['question']=="Why":
+            score = parameters['nfeatures']
     return score
 
 def linear_scalarization(score_hist, properties_list, context):
