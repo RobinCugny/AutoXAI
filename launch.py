@@ -3,12 +3,19 @@ from utils import load_dataset, load_model, questions_to_xai_sol, hpo_list
 from evaluation_measures import evaluate,linear_scalarization
 from hyperparameters_optimization import get_parameters, gp_optimization
 import numpy as np
+from time import time
 
 def main(dataset_path, label, task, model_path=None, question=None, xai_list=None, epochs=10, trials=None, properties_list=None, hpo=None, evstrat_list=None, verbose=False, seed=None):
+    
     # weights=[-1,-1]
-    weights=[-1,-2,-0.5]
+    weights=[-0.5,-2,-0.25]
     # scaling="MinMax"
     scaling="Std"
+    es = True
+    IS = True
+
+    start_time = time()
+
     if seed!=None:
         np.random.seed(seed)
     """
@@ -102,7 +109,10 @@ def main(dataset_path, label, task, model_path=None, question=None, xai_list=Non
                         score_hist[property].append(score)
 
                     linear_scalarization(score_hist, properties_list, context)
-
+                    # print("ES tot")
+                    # print(len(score_hist['aggregated_score']) - np.argmax(score_hist['aggregated_score']))
+                    if es and len(score_hist['aggregated_score']) - np.argmax(score_hist['aggregated_score']) > 5:
+                        break
                     # print("aggregated_score",score_hist["aggregated_score"])
                     
             elif hpo == "gp":
@@ -137,6 +147,8 @@ def main(dataset_path, label, task, model_path=None, question=None, xai_list=Non
         print(k+":")
         print("  ",v)
 
+    print(time()-start_time,"s elapsed")
+
     return 0
 
 if __name__ == "__main__":
@@ -150,7 +162,7 @@ if __name__ == "__main__":
     parser.add_argument('-x', '--xai', help='List of XAI solution to test ex : "LIME,SHAP", must answer to the same question, see documentation.')
     parser.add_argument('-e', '--epochs', type=int, help='Maximum mumber of epochs to optimize hyperparameters for each XAI solution.', default=10)
     parser.add_argument('-t', '--trials', help='Maximum number of XAI solution to evaluate.')
-    parser.add_argument('-p', '--properties', help='List of properties to consider, ex : "robustness,fidelity,simplicity", must work on the set of XAI solutions, see documentation.')
+    parser.add_argument('-p', '--properties', help='List of properties to consider, ex : "robustness,fidelity,conciseness", must work on the set of XAI solutions, see documentation.')
     parser.add_argument('--hpo', help='Hyperparameters optimization method, ex : "bayesian", see documentation for the full list of the hpo methods.')
     parser.add_argument('--evstrat', help='Evaluation strategies to use in order gain time, ex : "ES,IS", see documentation for the full list of the evaluation strategies.')
     parser.add_argument('--verbose', help='Launch AutoXAI with verbosity on True.', action="store_true")

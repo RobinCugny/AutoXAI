@@ -21,7 +21,7 @@ def get_parameters(xai_sol, score_hist, hpo, properties_list, context):
                 parameters['l1_reg'] = rand()
             if parameters['l1_reg'] == 'num_features(int)':
                 parameters['l1_reg'] = 'num_features('+str(randint(1,context["X"].shape[1]))+')'
-        if 'simplicity' in properties_list:
+        if 'conciseness' in properties_list:
             parameters['nfeatures'] = randint(1,len(context["feature_names"]))
         else:
             parameters['nfeatures'] = len(context["feature_names"])
@@ -40,6 +40,7 @@ def gp_optimization(xai_sol, score_hist, properties_list, context, epochs):
     pbounds = {}
     if xai_sol=='LIME':
         pbounds = {'num_samples': (10, 10000), 'nfeatures':(1,len(context["feature_names"]))}#use utils
+        init_points = 5**len(pbounds)
 
         def f(num_samples,nfeatures):
             parameters = {'num_samples':int(num_samples),'nfeatures':int(np.round(nfeatures))}
@@ -53,6 +54,7 @@ def gp_optimization(xai_sol, score_hist, properties_list, context, epochs):
 
     if xai_sol=='SHAP':
         pbounds = {'summarize':(0,1),'nsamples': (10, 2048), 'l1_reg':(0,3), 'num_features':(1,len(context["feature_names"])), 'nfeatures':(1,len(context["feature_names"]))}
+        init_points = 5**2
         #num_features is for l1_reg and nfeatures for size of explanation vector
         def f(summarize, nsamples, l1_reg, num_features, nfeatures):
             parameters = {}
@@ -70,7 +72,7 @@ def gp_optimization(xai_sol, score_hist, properties_list, context, epochs):
             score = score_hist["aggregated_score"][-1]
             return score
     
-    init_points = 3*len(pbounds)#TODO find better init (square is better but expensive)
+    # init_points = 3*len(pbounds)#TODO find better init (square is better but expensive)
 
     optimizer = BayesianOptimization(
         f=f,
