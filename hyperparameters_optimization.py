@@ -6,6 +6,27 @@ from XAI_solutions import set_up_explainer, get_local_exp
 from evaluation_measures import evaluate,linear_scalarization
 
 def get_parameters(xai_sol, score_hist, hpo, properties_list, context):
+    """
+    Generates the hyparameters for an XAI solution according to the chosen HPO method.
+
+    Parameters
+    ----------
+    xai_sol : str
+        Name of the XAI solution for which we want parameters to be generated.
+    score_hist : dict
+        History of scores on all evaluation measures.
+    hpo : str
+        Method to use to generate hyperparameters.
+    properties_list : list
+         List of the evaluated properties (conciseness impacts hyperparameters).
+    context : dict
+        Information of the context that may change the process.
+
+    Returns
+    -------
+    dict
+        Parameters of the XAI solution for the next explanations and evaluations.
+    """    
     parameters = {}
 
     if hpo == 'random':
@@ -37,6 +58,27 @@ def get_parameters(xai_sol, score_hist, hpo, properties_list, context):
     return parameters
 
 def gp_optimization(xai_sol, score_hist, properties_list, context, epochs):
+    """
+    Generates the hyparameters for an XAI solution using Gaussian Process method.
+
+    Parameters
+    ----------
+    xai_sol : str
+        Name of the XAI solution for which we want parameters to be generated.
+    score_hist : dict
+        History of scores on all evaluation measures.
+    properties_list : list
+        List of the evaluated properties (conciseness impacts hyperparameters).
+    context : dict
+        Information of the context that may change the process.
+    epochs : int
+        Number of iterations in the gaussian process.
+
+    Returns
+    -------
+    list
+        List of dictionaries, each of them contains parameters.
+    """    
     pbounds = {}
     if xai_sol=='LIME':
         pbounds = {'num_samples': (10, 10000), 'nfeatures':(1,len(context["feature_names"]))}#use utils

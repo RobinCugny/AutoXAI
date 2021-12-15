@@ -5,14 +5,17 @@ from hyperparameters_optimization import get_parameters, gp_optimization
 import numpy as np
 from time import time
 
+#TODO rename file in core (according to paper)
+
 def main(dataset_path, label, task, model_path=None, question=None, xai_list=None, epochs=10, trials=None, properties_list=None, hpo=None, evstrat_list=None, verbose=False, seed=None):
     
     # weights=[-1,-1]
-    weights=[-0.5,-2,-0.25]
+    weights=[-1,-2,-0.5] #TODO set these as parameters
     # scaling="MinMax"
     scaling="Std"
     es = True
     IS = True
+    session_id = '0'
 
     start_time = time()
 
@@ -42,6 +45,8 @@ def main(dataset_path, label, task, model_path=None, question=None, xai_list=Non
             for xai in xai_list:
                 if xai not in questions_to_xai_sol[question]:
                     raise ValueError("Some XAI solutions are not in the same set or are not implemented yet")
+
+    #TODO convert properties in evaluation measures
 
     X,y,feature_names = load_dataset(dataset_path, label)
 
@@ -85,7 +90,7 @@ def main(dataset_path, label, task, model_path=None, question=None, xai_list=Non
                 score = evaluate(xai_sol, parameters, property, context)
                 score_hist[property].append(score)
                 print("    "+property+" loss:",score)
-            linear_scalarization(score_hist, properties_list, context)
+            linear_scalarization(score_hist, properties_list, context) #TODO remove ? This does note make any sens at this point
             
         # TODO keep the best performing (nb = trials)
         if trials != None:
@@ -147,7 +152,24 @@ def main(dataset_path, label, task, model_path=None, question=None, xai_list=Non
         print(k+":")
         print("  ",v)
 
-    print(time()-start_time,"s elapsed")
+    with open('results/best_sol_'+session_id+'.txt', 'w') as f:
+        # f.write("XAI solution:\n")
+        # f.write(str(score_hist['xai_sol'][best_performing_solution]))
+        # f.write("\nparameters:\n")
+        # f.write(str(score_hist['parameters'][best_performing_solution])+"\n")
+        
+        for i in np.argsort(score_hist['aggregated_score'])[::-1]:
+            f.write('\n\nxai sol: '+str(score_hist['xai_sol'][i]))
+            f.write('\nparams: '+str(score_hist['parameters'][i]))
+            f.write('\nag scores: '+str(score_hist['aggregated_score'][i]))
+            for property in properties_list:
+                f.write('\n'+property+': '+str(score_hist[property][i])+' scaled:'+str(score_hist['scaled_'+property][i]))
+        f.write("\n--------------------RECORDS--------------------")
+        for k,v in score_hist.items():
+            f.write("\n"+k+":")
+            f.write("\n  "+v)
+
+    print(time()-start_time,"sec elapsed")
 
     return 0
 
@@ -163,7 +185,7 @@ if __name__ == "__main__":
     parser.add_argument('-e', '--epochs', type=int, help='Maximum mumber of epochs to optimize hyperparameters for each XAI solution.', default=10)
     parser.add_argument('-t', '--trials', help='Maximum number of XAI solution to evaluate.')
     parser.add_argument('-p', '--properties', help='List of properties to consider, ex : "robustness,fidelity,conciseness", must work on the set of XAI solutions, see documentation.')
-    parser.add_argument('--hpo', help='Hyperparameters optimization method, ex : "bayesian", see documentation for the full list of the hpo methods.')
+    parser.add_argument('--hpo', help='Hyperparameters optimization method, ex : "gp", see documentation for the full list of the hpo methods.')
     parser.add_argument('--evstrat', help='Evaluation strategies to use in order gain time, ex : "ES,IS", see documentation for the full list of the evaluation strategies.')
     parser.add_argument('--verbose', help='Launch AutoXAI with verbosity on True.', action="store_true")
     parser.add_argument('-s','--seed', type=int, help='Set up a seed for random generated numbers.')
