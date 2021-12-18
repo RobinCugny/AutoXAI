@@ -31,20 +31,30 @@ def set_up_explainer(xai_sol, parameters, context):
         feature_names=context["feature_names"]
         verbose=context["verbose"]
         mode=context["task"]
+        if mode == 'regression':
+            explainer = lime.lime_tabular.LimeTabularExplainer(training_data=X, feature_names=feature_names, training_labels=y, verbose=verbose, mode=mode, discretize_continuous=False)    
+        else:
+            class_names = np.unique(y)
+            explainer = lime.lime_tabular.LimeTabularExplainer(training_data=X, feature_names=feature_names, class_names=class_names, verbose=verbose, mode=mode, discretize_continuous=False)    
 
-        explainer = lime.lime_tabular.LimeTabularExplainer(training_data=X, feature_names=feature_names, training_labels=y, verbose=verbose, mode=mode, discretize_continuous=False)    
     
     elif xai_sol == "SHAP":
         #TODO use shap.Explainer for genericity
         X=context["X"]
         m = context['model']
         summarize = parameters['summarize']
+        mode=context["task"]
 
-        if summarize == "Sampling":
-            explainer = shap.explainers.Sampling(m.predict, X)
-        else :
-            explainer = shap.KernelExplainer(m.predict, X)
-
+        if mode=='regression':
+            if summarize == "Sampling":
+                explainer = shap.explainers.Sampling(m.predict, X)
+            else :
+                explainer = shap.KernelExplainer(m.predict, X)
+        else:
+            if summarize == "Sampling":
+                explainer = shap.explainers.Sampling(m.predict_proba, X)
+            else :
+                explainer = shap.KernelExplainer(m.predict_proba, X)
 
     return explainer
 
@@ -68,21 +78,28 @@ def get_local_exp(xai_sol, x, parameters, context):
     list
         Vector of feature influence constituting the explanation.
     """    
+    explainer = context['explainer']
+    m = context['model']
+    mode=context["task"]
     if xai_sol == "LIME":
-
-        explainer = context['explainer']
-        m = context['model']
-        feature_names = context['feature_names']
         num_samples = parameters['num_samples']
+        feature_names = context['feature_names']
 
-        e = reorder_attributes(dict(explainer.explain_instance(x, m.predict, num_samples=num_samples).as_list()), feature_names)
+        if mode == 'regression':
+            e = reorder_attributes(dict(explainer.explain_instance(x, m.predict, num_samples=num_samples).as_list()), feature_names)
+        else:
+            # label = int(m.predict(x.reshape(1, -1)))
+            # print(explainer.explain_instance(x, m.predict_proba, num_samples=num_samples).as_list())
+            e = reorder_attributes(dict(explainer.explain_instance(x, m.predict_proba, num_samples=num_samples).as_list()), feature_names)
 
     if xai_sol == "SHAP":
-        explainer = context['explainer']
         nsamples = parameters['nsamples']
         l1_reg = parameters['l1_reg']
-
-        e = explainer.shap_values(x,nsamples=nsamples,l1_reg=l1_reg)
+        if mode == 'regression':
+            e = explainer.shap_values(x,nsamples=nsamples,l1_reg=l1_reg)
+        else:
+            pred=int(m.predict(x.reshape(1, -1)))
+            e = explainer.shap_values(x,nsamples=nsamples,l1_reg=l1_reg)[pred]
         # print("------SHAP-----")
         # print(x)
         # print(e)

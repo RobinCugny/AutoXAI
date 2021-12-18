@@ -7,15 +7,18 @@ from time import time
 
 #TODO rename file in core (according to paper)
 
-def main(dataset_path, label, task, model_path=None, question=None, xai_list=None, epochs=10, trials=None, properties_list=None, hpo=None, evstrat_list=None, verbose=False, seed=None):
+def main(dataset_path, label, task, model_path=None, question=None, xai_list=None, epochs=10, trials=None, properties_list=None, hpo=None, evstrat_list=None, verbose=False, seed=None, weights=[-1,-2,-0.5], scaling="Std", session_id = '0'):
     
     # weights=[-1,-1]
-    weights=[-1,-2,-0.5] #TODO set these as parameters
-    # scaling="MinMax"
-    scaling="Std"
-    es = True
-    IS = True
-    session_id = '0'
+    # weights=[-1,-2,-0.5] #TODO set these as parameters
+    # # scaling="MinMax"
+    # scaling="Std"
+    # session_id = '0'
+    evstrat_list = ['ES','IS']
+    if 'ES' in evstrat_list:
+        early_stopping = True
+    if 'IS' in evstrat_list:
+        information_sharing = True
 
     start_time = time()
 
@@ -116,7 +119,7 @@ def main(dataset_path, label, task, model_path=None, question=None, xai_list=Non
                     linear_scalarization(score_hist, properties_list, context)
                     # print("ES tot")
                     # print(len(score_hist['aggregated_score']) - np.argmax(score_hist['aggregated_score']))
-                    if es and len(score_hist['aggregated_score']) - np.argmax(score_hist['aggregated_score']) > 5:
+                    if early_stopping and len(score_hist['aggregated_score']) - np.argmax(score_hist['aggregated_score']) > 5:
                         break
                     # print("aggregated_score",score_hist["aggregated_score"])
                     
@@ -167,7 +170,7 @@ def main(dataset_path, label, task, model_path=None, question=None, xai_list=Non
         f.write("\n--------------------RECORDS--------------------")
         for k,v in score_hist.items():
             f.write("\n"+k+":")
-            f.write("\n  "+v)
+            f.write("\n  "+str(v))
 
     print(time()-start_time,"sec elapsed")
 
