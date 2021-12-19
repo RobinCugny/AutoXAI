@@ -83,8 +83,7 @@ def compute_lipschitz_robustness(xai_sol, parameters, context):
     session_id = '0'
     X=context["X"]
     verbose=context["verbose"]
-
-    eps = 0.1
+    eps = list(np.std(X, axis=0)*0.1)
     njobs = -1
     if xai_sol in ['LIME','SHAP']:
         n_calls = 10
@@ -92,7 +91,7 @@ def compute_lipschitz_robustness(xai_sol, parameters, context):
         n_calls = 100
 
     def exp(x):
-        return get_local_exp(xai_sol, x, parameters, context)
+        return get_local_exp(xai_sol, x, parameters, context, update_order_feat=False)
     
     list_lip = []
 
@@ -101,6 +100,7 @@ def compute_lipschitz_robustness(xai_sol, parameters, context):
         # print('Robustness uses previously computed points')
         x_opts = pickle.load(open(path, "rb"))
         for i in tqdm(range(len(x_opts))):
+            get_local_exp(xai_sol, X[i], parameters, context)
             lip = lipschitz_ratio(X[i],x_opts[i],exp)
             list_lip.append(lip)
 
@@ -114,6 +114,7 @@ def compute_lipschitz_robustness(xai_sol, parameters, context):
             lwr = (x - eps).flatten()
             upr = (x + eps).flatten()
             bounds = list(zip(*[lwr, upr]))
+            get_local_exp(xai_sol, X[i], parameters, context)
             f = partial(lipschitz_ratio, x, function=exp,
                         reshape=orig_shape, minus=True)
             res = gp_minimize(f, bounds, n_calls=n_calls,
@@ -163,7 +164,7 @@ def compute_infidelity(xai_sol, parameters, context):
     session_id='0'
     X = context["X"]
     model = context['model']
-    eps = 0.1
+    eps = list(np.std(X, axis=0)*0.1)
     nb_pert = 10
     list_inf = []
 
@@ -174,11 +175,13 @@ def compute_infidelity(xai_sol, parameters, context):
         for i in tqdm(range(len(perturb_infs))):
             x = X[i]
             pertubation_diff = []
-            exp = get_local_exp(xai_sol, x, parameters, context)[:parameters['nfeatures']]
-            exp_x = np.matmul(x[:parameters['nfeatures']],np.asarray(exp).T)
+            exp = get_local_exp(xai_sol, x, parameters, context)
+            exp_x = np.matmul(x[parameters['most_influent_features']],np.asarray(exp).T)
             for j in range(nb_pert):
                 x0 = perturb_infs[i]['x0'][j]
-                exp_x0 = np.matmul(x0[:parameters['nfeatures']],np.asarray(exp).T)
+                # exp0 = get_local_exp(xai_sol, x0, parameters, context)[:parameters['nfeatures']]
+                # exp_x0 = np.matmul(x0[:parameters['nfeatures']],np.asarray(exp0).T)
+                exp_x0 = np.matmul(x0[parameters['most_influent_features']],np.asarray(exp).T)
                 pred_x = perturb_infs[i]['pred_x'][j]
                 pred_x0 = perturb_infs[i]['pred_x0'][j]
                 pertubation_diff.append((exp_x-exp_x0-(pred_x-pred_x0))**2)
@@ -191,14 +194,19 @@ def compute_infidelity(xai_sol, parameters, context):
             x = X[i]
             pertubation_diff = []
             pert = {'x0':[],'pred_x':[],'pred_x0':[]}
-            exp = get_local_exp(xai_sol, x, parameters, context)[:parameters['nfeatures']]
-            exp_x = np.matmul(x[:parameters['nfeatures']],np.asarray(exp).T)
+            exp = get_local_exp(xai_sol, x, parameters, context)
+            exp_x = np.matmul(x[parameters['most_influent_features']],np.asarray(exp).T)
             for j in range(nb_pert):
                 x0 = x + np.random.rand(len(x))*2*eps-eps
-                # exp0 = get_local_exp(xai_sol, x, parameters, context)
-                exp_x0 = np.matmul(x0[:parameters['nfeatures']],np.asarray(exp).T)
-                pred_x = model.predict(x.reshape(1, -1))[0]
-                pred_x0 = model.predict(x0.reshape(1, -1))[0]
+                # exp0 = get_local_exp(xai_sol, x0, parameters, context)[:parameters['nfeatures']]
+                # exp_x0 = np.matmul(x0[:parameters['nfeatures']],np.asarray(exp0).T)
+                exp_x0 = np.matmul(x0[parameters['most_influent_features']],np.asarray(exp).T)
+                if context['task']=='regression':
+                    pred_x = model.predict(x.reshape(1, -1))[0]
+                    pred_x0 = model.predict(x0.reshape(1, -1))[0]
+                else:
+                    pred_x = max(model.predict_proba(x.reshape(1, -1))[0])
+                    pred_x0 = max(model.predict_proba(x0.reshape(1, -1))[0])
                 pertubation_diff.append((exp_x-exp_x0-(pred_x-pred_x0))**2)
 
                 pert['x0'].append(x0)

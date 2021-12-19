@@ -55,6 +55,7 @@ def get_parameters(xai_sol, score_hist, hpo, properties_list, context):
             parameters['nsamples'] = 2048
             parameters['l1_reg'] = "auto"
         parameters['nfeatures'] = len(context["feature_names"])
+        # parameters['most_influent_features'] = list(np.arange(parameters['nfeatures']))
     return parameters
 
 def gp_optimization(xai_sol, score_hist, properties_list, context, epochs):

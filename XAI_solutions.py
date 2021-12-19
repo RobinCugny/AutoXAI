@@ -58,7 +58,7 @@ def set_up_explainer(xai_sol, parameters, context):
 
     return explainer
 
-def get_local_exp(xai_sol, x, parameters, context):
+def get_local_exp(xai_sol, x, parameters, context, update_order_feat=True):
     """
     Calculates a local explanation and formats it for future evaluation.
 
@@ -103,5 +103,8 @@ def get_local_exp(xai_sol, x, parameters, context):
         # print("------SHAP-----")
         # print(x)
         # print(e)
-
-    return e[:parameters['nfeatures']]
+    if update_order_feat:
+        most_influent_features = np.argsort(e)[::-1][:parameters['nfeatures']]
+        parameters['most_influent_features'] = most_influent_features
+    e=list(np.asarray(e)[parameters['most_influent_features']])
+    return e
