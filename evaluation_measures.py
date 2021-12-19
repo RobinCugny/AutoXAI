@@ -175,7 +175,7 @@ def compute_infidelity(xai_sol, parameters, context):
         for i in tqdm(range(len(perturb_infs))):
             x = X[i]
             pertubation_diff = []
-            exp = get_local_exp(xai_sol, x, parameters, context)
+            exp = get_local_exp(xai_sol, x, parameters, context)/context[xai_sol+"_std"]
             exp_x = np.matmul(x[parameters['most_influent_features']],np.asarray(exp).T)
             for j in range(nb_pert):
                 x0 = perturb_infs[i]['x0'][j]
@@ -184,6 +184,8 @@ def compute_infidelity(xai_sol, parameters, context):
                 exp_x0 = np.matmul(x0[parameters['most_influent_features']],np.asarray(exp).T)
                 pred_x = perturb_infs[i]['pred_x'][j]
                 pred_x0 = perturb_infs[i]['pred_x0'][j]
+                # print("exp_x-exp_x0",exp_x-exp_x0)
+                # print("pred_x-pred_x0",pred_x-pred_x0)
                 pertubation_diff.append((exp_x-exp_x0-(pred_x-pred_x0))**2)
             list_inf.append(np.mean(pertubation_diff))
     else:
@@ -194,7 +196,7 @@ def compute_infidelity(xai_sol, parameters, context):
             x = X[i]
             pertubation_diff = []
             pert = {'x0':[],'pred_x':[],'pred_x0':[]}
-            exp = get_local_exp(xai_sol, x, parameters, context)
+            exp = get_local_exp(xai_sol, x, parameters, context)/context[xai_sol+"_std"]
             exp_x = np.matmul(x[parameters['most_influent_features']],np.asarray(exp).T)
             for j in range(nb_pert):
                 x0 = x + np.random.rand(len(x))*2*eps-eps

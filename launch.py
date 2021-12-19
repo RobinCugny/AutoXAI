@@ -2,6 +2,7 @@ import argparse
 from utils import load_dataset, load_model, questions_to_xai_sol, hpo_list
 from evaluation_measures import evaluate,linear_scalarization
 from hyperparameters_optimization import get_parameters, gp_optimization
+from XAI_solutions import get_exp_std
 import numpy as np
 from time import time
 
@@ -88,6 +89,7 @@ def main(dataset_path, label, task, model_path=None, question=None, xai_list=Non
 
             parameters = get_parameters(xai_sol, score_hist, "default", properties_list, context)
             score_hist["parameters"].append(parameters)
+            get_exp_std(xai_sol, parameters, context)
             print("  parameters:",parameters)
             for property in properties_list:
                 score = evaluate(xai_sol, parameters, property, context)

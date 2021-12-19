@@ -2,7 +2,7 @@ import lime
 import lime.lime_tabular
 import numpy as np
 import shap
-
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from utils import reorder_attributes
 
 
@@ -104,7 +104,20 @@ def get_local_exp(xai_sol, x, parameters, context, update_order_feat=True):
         # print(x)
         # print(e)
     if update_order_feat:
-        most_influent_features = np.argsort(e)[::-1][:parameters['nfeatures']]
+        most_influent_features = np.argsort(np.abs(e))[::-1][:parameters['nfeatures']]
         parameters['most_influent_features'] = most_influent_features
     e=list(np.asarray(e)[parameters['most_influent_features']])
     return e
+
+def get_exp_std(xai_sol, parameters, context):
+    n=10
+    X=context["X"]
+    exp_values = []
+    context['explainer'] = set_up_explainer(xai_sol, parameters, context)
+    print(get_local_exp(xai_sol, X[0], parameters, context))
+    for i in range(n):
+        exp_values += get_local_exp(xai_sol, X[i], parameters, context)
+    
+    std = np.std(exp_values)
+    context[xai_sol+"_std"]=std
+    return std
