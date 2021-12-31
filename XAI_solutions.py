@@ -114,7 +114,7 @@ def get_exp_std(xai_sol, parameters, context):
     X=context["X"]
     exp_values = []
     context['explainer'] = set_up_explainer(xai_sol, parameters, context)
-    print(get_local_exp(xai_sol, X[0], parameters, context))
+    # print(get_local_exp(xai_sol, X[0], parameters, context))
     for i in range(n):
         exp_values += get_local_exp(xai_sol, X[i], parameters, context)
     

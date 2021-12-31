@@ -8,14 +8,22 @@ from time import time
 
 #TODO rename file in core (according to paper)
 
-def main(dataset_path, label, task, model_path=None, question=None, xai_list=None, epochs=10, trials=None, properties_list=None, hpo=None, evstrat_list=None, verbose=False, seed=None, weights=[-1,-2,-0.5], scaling="Std", session_id = '0'):
+def main(dataset_path, label, task, model_path=None, question=None, xai_list=None, epochs=10, trials=None, properties_list=None, hpo=None, evstrat_list=None, verbose=False, seed=None, weights=[1,2,0.5], scaling="Std", session_id = '0'):
     
+    """
+    Check parameters section
+    """    
     # weights=[-1,-1]
     # weights=[-1,-2,-0.5] #TODO set these as parameters
     # # scaling="MinMax"
     # scaling="Std"
     # session_id = '0'
-    evstrat_list = ['ES','IS']
+    # evstrat_list = ['ES','IS']
+    try:
+        weights = [-float(w) for w in weights]
+    except ValueError:
+        raise ValueError("Weights must be numerical values.")
+
     if 'ES' in evstrat_list:
         early_stopping = True
     if 'IS' in evstrat_list:
@@ -25,9 +33,6 @@ def main(dataset_path, label, task, model_path=None, question=None, xai_list=Non
 
     if seed!=None:
         np.random.seed(seed)
-    """
-    Check parameters section
-    """
 
     if question == None:
         if xai_list == None:
@@ -52,12 +57,16 @@ def main(dataset_path, label, task, model_path=None, question=None, xai_list=Non
 
     #TODO convert properties in evaluation measures
 
+    """
+    Context construction
+    """  
+
     X,y,feature_names = load_dataset(dataset_path, label)
 
     context = {}
 
-    context["X"]=X
-    context["y"]=y
+    context["X"] = X
+    context["y"] = y
     context["feature_names"] = feature_names
     context["verbose"] = verbose
     context["task"] = task
@@ -65,6 +74,7 @@ def main(dataset_path, label, task, model_path=None, question=None, xai_list=Non
     context["scaling"] = scaling
     context["weights"] = weights
 
+    # Check if it is a question that needs a model otherwise it should train a transparent model
     if question == "Why":
         if model_path == None:
             raise ValueError("Model is necessary for this question")
@@ -77,8 +87,8 @@ def main(dataset_path, label, task, model_path=None, question=None, xai_list=Non
         score_hist["parameters"] = []
 
         for property in properties_list:
-            score_hist[property]=[]
-            score_hist["scaled_"+property]=[]
+            score_hist[property] = []
+            score_hist["scaled_"+property] = []
 
         # Evaluate each xai_sol with default parameters
         print("Evaluate each XAI solution with its default parameters.")
@@ -190,6 +200,8 @@ if __name__ == "__main__":
     parser.add_argument('-e', '--epochs', type=int, help='Maximum mumber of epochs to optimize hyperparameters for each XAI solution.', default=10)
     parser.add_argument('-t', '--trials', help='Maximum number of XAI solution to evaluate.')
     parser.add_argument('-p', '--properties', help='List of properties to consider, ex : "robustness,fidelity,conciseness", must work on the set of XAI solutions, see documentation.')
+    parser.add_argument('-w', '--weights', help='Weights for properties importance, default is "1,2,0.5"', default="1,2,0.5")
+    parser.add_argument('--scaling', help='Scaling to use for score scalarization, default is Std', default="Std")
     parser.add_argument('--hpo', help='Hyperparameters optimization method, ex : "gp", see documentation for the full list of the hpo methods.')
     parser.add_argument('--evstrat', help='Evaluation strategies to use in order gain time, ex : "ES,IS", see documentation for the full list of the evaluation strategies.')
     parser.add_argument('--verbose', help='Launch AutoXAI with verbosity on True.', action="store_true")
@@ -206,6 +218,8 @@ if __name__ == "__main__":
     epochs = args.epochs
     trials = args.trials
     properties_list = str(args.properties).split(",")
+    weights = str(args.weights).split(",")
+    scaling = args.scaling
     hpo = args.hpo
     evstrat_list = str(args.evstrat).split(",")
     verbose = args.verbose
@@ -218,4 +232,4 @@ if __name__ == "__main__":
     if evstrat_list == ['None']:
         evstrat_list = None
 
-    main(dataset_path, label, task, model_path, question, xai_list, epochs, trials, properties_list, hpo, evstrat_list, verbose, seed)
+    main(dataset_path, label, task, model_path, question, xai_list, epochs, trials, properties_list, hpo, evstrat_list, verbose, seed, weights, scaling)

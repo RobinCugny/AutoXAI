@@ -3,9 +3,11 @@ A framework to automatically select the XAI solution you need
 
 ## Launch experiment of the paper:
 ```
-python launch.py data/diabetes.csv "measure of disease progression" regression -m models/MLPRegressor_diabetes.p -q "Why" -p "robustness,fidelity,conciseness" --hpo "gp" -s 0 -e 25
+python launch.py data/diabetes.csv "measure of disease progression" regression -m models/MLPRegressor_diabetes.p -q "Why" -p "robustness,fidelity,conciseness" --hpo "gp" --evstrat "ES,IS" -w "1,2,0.5" --scaling "Std" -s 0 -e 25
+```
 or
-python launch.py data/pima_indians_diabetes.csv "Outcome" classification -m models/MLPRegressor_pima_indians.p -q "Why" -p "robustness,fidelity,conciseness" --hpo "gp" -s 0 -e 25
+```
+python launch.py data/pima_indians_diabetes.csv "Outcome" classification -m models/MLPRegressor_pima_indians.p -q "Why" -p "robustness,fidelity,conciseness" --hpo "gp" --evstrat "ES,IS" -w "1,2,0.5" --scaling "Std" -s 0 -e 25
 ```
 
 ## Help:
