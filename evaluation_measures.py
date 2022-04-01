@@ -81,6 +81,8 @@ def compute_lipschitz_robustness(xai_sol, parameters, context):
     es=True
     IS=True
     session_id = '0'
+    #TODO set as parameters
+    
     X=context["X"]
     verbose=context["verbose"]
     eps = list(np.std(X, axis=0)*0.1)

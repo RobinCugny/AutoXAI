@@ -73,6 +73,7 @@ def main(dataset_path, label, task, model_path=None, question=None, xai_list=Non
     context["question"] = question
     context["scaling"] = scaling
     context["weights"] = weights
+    # TODO Set it as a class to check the values and do the operations above
 
     # Check if it is a question that needs a model otherwise it should train a transparent model
     if question == "Why":

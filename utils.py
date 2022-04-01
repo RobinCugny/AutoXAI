@@ -9,6 +9,7 @@ xai_sol = ['LIME','SHAP']
 
 hpo_list = ["random", "gp"]
 
+#TODO add discretize continuous
 hp_possible_values = {
     'LIME':
         {

@@ -4,6 +4,18 @@ from sklearn.datasets import load_diabetes
 import pandas as pd
 
 def download_dataset(name):
+    """Downloads the corresponding dataset and formats it for AutoXAI
+
+    Parameters
+    ----------
+    name : str
+        The name of the dataset (ex: "diabetes", "pima indians")
+
+    Raises
+    ------
+    ValueError
+        If the dataset is not implemented yet.
+    """    
     if name=="diabetes":
         diabetes = load_diabetes()
 
