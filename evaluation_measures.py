@@ -1,9 +1,11 @@
+from matplotlib import docstring
 import numpy as np
 from tqdm import tqdm
 from skopt import gp_minimize
 from functools import partial
-from XAI_solutions import set_up_explainer, get_local_exp
+from XAI_solutions import set_up_explainer, get_local_exp, get_prototypes
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
+from sklearn.metrics import pairwise_distances
 import pickle
 import os
 
@@ -140,7 +142,7 @@ def compute_lipschitz_robustness(xai_sol, parameters, context):
         pickle.dump(x_opts, open(path, "wb"))
 
     score = np.mean(list_lip)
-    return score
+    return -score
 
 def compute_infidelity(xai_sol, parameters, context):
     """
@@ -233,7 +235,29 @@ def compute_infidelity(xai_sol, parameters, context):
         pickle.dump(perturb_infs, open(path, "wb"))
 
     score = np.mean(list_inf)
-    return score
+    return -score
+
+def compute_diversity(xai_sol:str, parameters:str, context:dict):
+    #TODO add docstring
+    prototypes = get_prototypes(xai_sol, parameters, context)
+    distance = context['distance']
+    scores = []
+    #for each subset of data evaluate their prototypes
+    for p in prototypes:
+        dists = pairwise_distances(p,metric=distance)
+        n = len(dists)
+        scores.append(np.sum(dists)/(n**2-n))
+    return np.mean(scores)
+
+def compute_non_representativeness(xai_sol:str, parameters:str, context:dict):
+    #TODO add docstring
+    prototypes = get_prototypes(xai_sol, parameters, context)
+    distance = context['distance']
+    X = context['X']
+    scores = []
+    for p in prototypes:
+        scores.append(np.mean(np.min(pairwise_distances(X,p,metric=distance),axis=1)))
+    return -np.mean(scores)
 
 def evaluate(xai_sol, parameters, property, context):
     """
@@ -256,7 +280,7 @@ def evaluate(xai_sol, parameters, property, context):
         Score for the evaluation measure corresponding to the property.
     """    
     # Set up of XAI solutions before computing evaluation
-    if xai_sol in ['LIME','SHAP']:
+    if xai_sol in ['LIME','SHAP','Protodash']:
         context['explainer'] = set_up_explainer(xai_sol, parameters, context)
     
     # Computing evaluation for specified property
@@ -268,7 +292,16 @@ def evaluate(xai_sol, parameters, property, context):
             score = compute_infidelity(xai_sol, parameters, context)
     if property == 'conciseness':
         if context['question']=="Why":
-            score = parameters['nfeatures']
+            score = -parameters['nfeatures']
+        if context['question']=="What":
+            score = -parameters['nb_proto']
+    if property == 'diversity':
+            if context['question']=="What":
+                score = compute_diversity(xai_sol,parameters,context)
+    if property == 'representativeness':
+            if context['question']=="What":
+                score = compute_non_representativeness(xai_sol,parameters,context)
+    
     return score
 
 #TODO move it to utils or directly to launch

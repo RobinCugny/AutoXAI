@@ -1,8 +1,14 @@
+import sys
+import os
 import lime
 import lime.lime_tabular
 import numpy as np
 import shap
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
+from aix360.algorithms.protodash import ProtodashExplainer
+from mmdcritic import mmd_critic
+from sklearn_extra.cluster import KMedoids
+from sklearn.preprocessing import OneHotEncoder
 from utils import reorder_attributes
 
 
@@ -55,7 +61,11 @@ def set_up_explainer(xai_sol, parameters, context):
                 explainer = shap.explainers.Sampling(m.predict_proba, X)
             else :
                 explainer = shap.KernelExplainer(m.predict_proba, X)
-
+    
+    elif xai_sol=='Protodash':
+        explainer = ProtodashExplainer()
+    else:
+        return 0
     return explainer
 
 def get_local_exp(xai_sol, x, parameters, context, update_order_feat=True):
@@ -109,7 +119,66 @@ def get_local_exp(xai_sol, x, parameters, context, update_order_feat=True):
     e=list(np.asarray(e)[parameters['most_influent_features']])
     return e
 
+def get_prototypes(xai_sol, parameters, context):
+    #TODO add docstring
+    X=context['X']
+    y=context['y']
+    nb_proto = parameters['nb_proto']
+    prototypes=[]
+    if xai_sol == "Protodash":
+        kernelType=parameters['kernelType']
+        sigma=parameters['sigma']
+        explainer = context['explainer']
+        for c in np.unique(y):
+            subset = X[np.where(y==c)]
+            with open(os.devnull, "w") as devnull:
+                old_stdout = sys.stdout
+                sys.stdout = devnull
+                try:  
+                    (W, S, _) = explainer.explain(subset, subset, m=nb_proto,kernelType=kernelType,sigma=sigma)
+                finally:
+                    sys.stdout = old_stdout
+            prototypes.append(subset[S])
+    if xai_sol == "MMD":
+        gamma = parameters['gamma']
+        # ktype = parameters['ktype']
+        for c in np.unique(y):
+            nb_critic = 1
+            subset = X[np.where(y==c)]
+            subset_y = y[np.where(y==c)]
+            prototypes_idx = mmd_critic(subset, subset_y, nb_proto, nb_critic, gamma=gamma, ktype=0, crit=False)
+            prototypes.append(subset[prototypes_idx])
+    if xai_sol == "kmedoids":
+        metric=parameters['metric']
+        method=parameters['method']
+        init=parameters['init']
+        max_iter=parameters['max_iter']
+        for c in np.unique(y):
+            subset = X[np.where(y==c)]
+            kmedoids = KMedoids(n_clusters=nb_proto, metric=metric, method=method, init=init, max_iter=max_iter, random_state=0).fit(subset)
+            medoids_idx = kmedoids.medoid_indices_
+            prototypes.append(subset[medoids_idx])
+
+    return prototypes
+
 def get_exp_std(xai_sol, parameters, context):
+    #TODO complete docstring
+    """ Compute the standard deviation of explanations to scale them for fidelity computation
+
+    Parameters
+    ----------
+    xai_sol : _type_
+        _description_
+    parameters : _type_
+        _description_
+    context : _type_
+        _description_
+
+    Returns
+    -------
+    _type_
+        _description_
+    """    
     n=10
     X=context["X"]
     exp_values = []

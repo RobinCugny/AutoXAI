@@ -1,5 +1,5 @@
 import numpy as np
-from numpy.random import randint, choice, rand
+from numpy.random import randint, choice, rand, uniform
 from utils import hp_possible_values
 from bayes_opt import BayesianOptimization
 from XAI_solutions import set_up_explainer, get_local_exp
@@ -42,6 +42,20 @@ def get_parameters(xai_sol, score_hist, hpo, properties_list, context):
                 parameters['l1_reg'] = rand()
             if parameters['l1_reg'] == 'num_features(int)':
                 parameters['l1_reg'] = 'num_features('+str(randint(1,context["X"].shape[1]))+')'
+
+        if xai_sol == 'MMD':
+            parameters['gamma'] = uniform(hp_possible_values["MMD"]["gamma"][0],hp_possible_values["MMD"]["gamma"][1])
+            # parameters['ktype'] = choice(hp_possible_values["MMD"]["ktype"])
+        if xai_sol == 'Protodash':
+            parameters['kernelType'] = choice(hp_possible_values["Protodash"]["kernelType"])
+            parameters['sigma'] = uniform(hp_possible_values["Protodash"]["sigma"][0],hp_possible_values["Protodash"]["sigma"][1])
+        if xai_sol == 'kmedoids':
+            parameters['metric'] = choice(hp_possible_values["kmedoids"]["metric"])
+            parameters['method'] = choice(hp_possible_values["kmedoids"]["method"])
+            parameters['init'] = choice(hp_possible_values["kmedoids"]["init"])
+            parameters['max_iter'] = randint(hp_possible_values["kmedoids"]["max_iter"][0],
+                                             hp_possible_values["kmedoids"]["max_iter"][1])
+        parameters['nb_proto'] = randint(2,min(np.unique(context["y"],return_counts=True)[1]))
         if 'conciseness' in properties_list:
             parameters['nfeatures'] = randint(1,len(context["feature_names"]))
         else:
@@ -55,6 +69,20 @@ def get_parameters(xai_sol, score_hist, hpo, properties_list, context):
             parameters['nsamples'] = 2048
             parameters['l1_reg'] = "auto"
         parameters['nfeatures'] = len(context["feature_names"])
+
+        parameters['nb_proto'] = 3
+        if xai_sol == 'MMD':
+            parameters['gamma'] = None
+            # parameters['ktype'] = 0
+        if xai_sol == 'Protodash':
+            parameters['kernelType'] = 'other'
+            parameters['sigma'] = 2
+        if xai_sol == 'kmedoids':
+            parameters['metric'] = "euclidean"
+            parameters['method'] = "alternate"
+            parameters['init'] = "build"
+            parameters['max_iter'] = 300
+
         # parameters['most_influent_features'] = list(np.arange(parameters['nfeatures']))
     return parameters
 
@@ -79,7 +107,9 @@ def gp_optimization(xai_sol, score_hist, properties_list, context, epochs):
     -------
     list
         List of dictionaries, each of them contains parameters.
-    """    
+    """
+    #TODO use utils and hp_possible_values
+    #TODO end of the f function is the same, create a function for it
     pbounds = {}
     if xai_sol=='LIME':
         pbounds = {'num_samples': (10, 10000), 'nfeatures':(1,len(context["feature_names"]))}#use utils
@@ -108,6 +138,84 @@ def gp_optimization(xai_sol, score_hist, properties_list, context, epochs):
             if parameters['l1_reg'] == 'num_features(int)':
                 parameters['l1_reg'] = 'num_features('+str(int(np.round(num_features)))+')'
 
+            for property in properties_list:
+                property_score = evaluate(xai_sol, parameters, property, context)
+                score_hist[property].append(property_score)
+            linear_scalarization(score_hist, properties_list, context)
+            score = score_hist["aggregated_score"][-1]
+            return score
+
+        # parameters['nb_proto'] = 3
+        # if xai_sol == 'MMD':
+        #     parameters['gamma'] = None
+        #     # parameters['ktype'] = 0
+        # if xai_sol == 'Protodash':
+        #     parameters['kernelType'] = 'other'
+        #     parameters['sigma'] = 2
+        # if xai_sol == 'kmedoids':
+        #     parameters['metric'] = "euclidean"
+        #     parameters['method'] = "alternate"
+        #     parameters['init'] = "build"
+        #     parameters['max_iter'] = 300
+
+    # 'MMD':{
+    #       'gamma':[0,1],
+    #     #   'ktype':[0,1]
+    #     },
+    # 'Protodash':{
+    #     #   'kernelType':['Gaussian','other'],
+    #       'kernelType':['other'],
+    #       'sigma':[0,30]
+    #     },
+    # 'kmedoids':{
+    #       'metric':["euclidean","manhattan","cosine"],
+    #       'method':["alternate","pam"],
+    #       'init':["random", "heuristic", "k-medoids++", "build"],
+    #       'max_iter':[0,300]
+    #     }
+
+    if xai_sol == 'MMD':
+        pbounds = {'nb_proto': (2,min(np.unique(context["y"],return_counts=True)[1])), 'gamma':(0,1)}
+        init_points = 5**len(pbounds)
+
+        def f(nb_proto,gamma):
+            parameters = {'num_samples':int(np.round(nb_proto)),'gamma':gamma}
+            for property in properties_list:
+                property_score = evaluate(xai_sol, parameters, property, context)
+                score_hist[property].append(property_score)
+            linear_scalarization(score_hist, properties_list, context)
+            score = score_hist["aggregated_score"][-1]
+            return score
+
+    if xai_sol == 'Protodash':
+        pbounds = {'nb_proto': (2,min(np.unique(context["y"],return_counts=True)[1])),
+                    'sigma':(0,30)}
+        init_points = 5**len(pbounds)
+
+        def f(nb_proto,sigma):
+            parameters = {'num_samples':int(np.round(nb_proto)),'sigma':sigma}
+            for property in properties_list:
+                property_score = evaluate(xai_sol, parameters, property, context)
+                score_hist[property].append(property_score)
+            linear_scalarization(score_hist, properties_list, context)
+            score = score_hist["aggregated_score"][-1]
+            return score
+
+    if xai_sol == 'kmedoids':
+        pbounds = {'nb_proto': (2,min(np.unique(context["y"],return_counts=True)[1])), 
+                    'metric':(0,2),
+                    'method':(0,1),
+                    'init':(0,3),
+                    'max_iter':(0,300)}
+        init_points = 5**len(pbounds)
+
+        def f(nb_proto, metric, method, init, max_iter):
+            parameters = {}
+            parameters['nb_proto'] = int(np.round(nb_proto))
+            parameters['metric'] = hp_possible_values["kmedoids"]["metric"][int(np.round(metric))]
+            parameters['method'] = hp_possible_values["kmedoids"]["method"][int(np.round(method))]
+            parameters['init'] = hp_possible_values["kmedoids"]["init"][int(np.round(init))]
+            parameters['max_iter'] = int(np.round(max_iter))
             for property in properties_list:
                 property_score = evaluate(xai_sol, parameters, property, context)
                 score_hist[property].append(property_score)

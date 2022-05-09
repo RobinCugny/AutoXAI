@@ -8,7 +8,7 @@ from time import time
 
 #TODO rename file in core (according to paper)
 
-def main(dataset_path, label, task, model_path=None, question=None, xai_list=None, epochs=10, trials=None, properties_list=None, hpo=None, evstrat_list=None, verbose=False, seed=None, weights=[1,2,0.5], scaling="Std", session_id = '0'):
+def main(dataset_path, label, task, model_path=None, question=None, xai_list=None, epochs=10, trials=None, properties_list=None, hpo=None, evstrat_list=None, verbose=False, seed=None, weights=[1,2,0.5], scaling="Std", session_id = 'proto', distance='cosine'):
     
     """
     Check parameters section
@@ -19,15 +19,18 @@ def main(dataset_path, label, task, model_path=None, question=None, xai_list=Non
     # scaling="Std"
     # session_id = '0'
     # evstrat_list = ['ES','IS']
+
     try:
-        weights = [-float(w) for w in weights]
+        weights = [float(w) for w in weights]
     except ValueError:
         raise ValueError("Weights must be numerical values.")
 
-    if 'ES' in evstrat_list:
-        early_stopping = True
-    if 'IS' in evstrat_list:
-        information_sharing = True
+    if evstrat_list!=None:
+            early_stopping = True if 'ES' in evstrat_list else False
+            information_sharing = True if 'IS' in evstrat_list else False
+    else:
+        early_stopping = False
+        information_sharing = False
 
     start_time = time()
 
@@ -73,6 +76,8 @@ def main(dataset_path, label, task, model_path=None, question=None, xai_list=Non
     context["question"] = question
     context["scaling"] = scaling
     context["weights"] = weights
+    context["distance"] = distance
+
     # TODO Set it as a class to check the values and do the operations above
 
     # Check if it is a question that needs a model otherwise it should train a transparent model
@@ -81,71 +86,72 @@ def main(dataset_path, label, task, model_path=None, question=None, xai_list=Non
             raise ValueError("Model is necessary for this question")
         context['model'] = load_model(model_path)
 
-        score_hist = {}
-        score_hist["xai_sol"] = []
-        score_hist["epoch"] = []
-        score_hist["aggregated_score"] = []
-        score_hist["parameters"] = []
+    score_hist = {}
+    score_hist["xai_sol"] = []
+    score_hist["epoch"] = []
+    score_hist["aggregated_score"] = []
+    score_hist["parameters"] = []
 
-        for property in properties_list:
-            score_hist[property] = []
-            score_hist["scaled_"+property] = []
+    for property in properties_list:
+        score_hist[property] = []
+        score_hist["scaled_"+property] = []
 
-        # Evaluate each xai_sol with default parameters
-        print("Evaluate each XAI solution with its default parameters.")
-        for xai_sol in xai_list:
-            print("XAI solution:",xai_sol)
-            score_hist["xai_sol"].append(xai_sol)
-            score_hist["epoch"].append(-1)
+    # Evaluate each xai_sol with default parameters
+    print("Evaluate each XAI solution with its default parameters.")
+    for xai_sol in xai_list:
+        print("XAI solution:",xai_sol)
+        score_hist["xai_sol"].append(xai_sol)
+        score_hist["epoch"].append(-1)
 
-            parameters = get_parameters(xai_sol, score_hist, "default", properties_list, context)
-            score_hist["parameters"].append(parameters)
+        parameters = get_parameters(xai_sol, score_hist, "default", properties_list, context)
+        score_hist["parameters"].append(parameters)
+        if question == "Why":
             get_exp_std(xai_sol, parameters, context)
-            print("  parameters:",parameters)
-            for property in properties_list:
-                score = evaluate(xai_sol, parameters, property, context)
-                score_hist[property].append(score)
-                print("    "+property+" loss:",score)
-            linear_scalarization(score_hist, properties_list, context) #TODO remove ? This does note make any sens at this point
-            
-        # TODO keep the best performing (nb = trials)
-        if trials != None:
-            pass
+        print("  parameters:",parameters)
+        for property in properties_list:
+            score = evaluate(xai_sol, parameters, property, context)
+            score_hist[property].append(score)
+            print("    "+property+" loss:",score)
+        linear_scalarization(score_hist, properties_list, context) #TODO remove ? This does note make any sens at this point
+        
+    # TODO keep the best performing (nb = trials)
+    if trials != None:
+        pass
 
-        for xai_sol in xai_list:
-            print("XAI solution:",xai_sol)
-            if hpo == "random":
-                for e in range(epochs) :
-                    score_hist["xai_sol"].append(xai_sol)
-                    score_hist["epoch"].append(e)
-                    print("  epoch:",e)
+    for xai_sol in xai_list:
+        print("XAI solution:",xai_sol)
+        if hpo == "random":
+            for e in range(epochs) :
+                score_hist["xai_sol"].append(xai_sol)
+                score_hist["epoch"].append(e)
+                print("  epoch:",e)
 
-                    parameters = get_parameters(xai_sol, score_hist, hpo, properties_list, context)
-                    score_hist["parameters"].append(parameters)
-                    print("  parameters:",parameters)
+                parameters = get_parameters(xai_sol, score_hist, hpo, properties_list, context)
+                score_hist["parameters"].append(parameters)
+                print("  parameters:",parameters)
 
-                    for property in properties_list:
-                        score = evaluate(xai_sol, parameters, property, context)
-                        print("    "+property+" loss:",score)
-                        score_hist[property].append(score)
+                for property in properties_list:
+                    score = evaluate(xai_sol, parameters, property, context)
+                    print("    "+property+" loss:",score)
+                    score_hist[property].append(score)
 
-                    linear_scalarization(score_hist, properties_list, context)
-                    # print("ES tot")
-                    # print(len(score_hist['aggregated_score']) - np.argmax(score_hist['aggregated_score']))
-                    if early_stopping and len(score_hist['aggregated_score']) - np.argmax(score_hist['aggregated_score']) > 5:
-                        break
-                    # print("aggregated_score",score_hist["aggregated_score"])
-                    
-            elif hpo == "gp":
-                results = gp_optimization(xai_sol, score_hist, properties_list, context, epochs)
-                # print(results)
-                for e, r in enumerate(results):
-                    score_hist["xai_sol"].append(xai_sol)
-                    score_hist["epoch"].append(e)
-                    score_hist["parameters"].append(r['params'])
+                linear_scalarization(score_hist, properties_list, context)
+                # print("ES tot")
+                # print(len(score_hist['aggregated_score']) - np.argmax(score_hist['aggregated_score']))
+                if early_stopping and len(score_hist['aggregated_score']) - np.argmax(score_hist['aggregated_score']) > 5:
+                    break
+                # print("aggregated_score",score_hist["aggregated_score"])
+                
+        elif hpo == "gp":
+            results = gp_optimization(xai_sol, score_hist, properties_list, context, epochs)
+            # print(results)
+            for e, r in enumerate(results):
+                score_hist["xai_sol"].append(xai_sol)
+                score_hist["epoch"].append(e)
+                score_hist["parameters"].append(r['params'])
 
-            else:
-                raise NameError("The optimization", hpo,"is not in", hpo_list)
+        else:
+            raise NameError("The optimization", hpo,"is not in", hpo_list)
     
     # Display best performing XAI solution with details
     best_performing_solution = np.argmax(score_hist['aggregated_score'])
@@ -167,7 +173,7 @@ def main(dataset_path, label, task, model_path=None, question=None, xai_list=Non
     for k,v in score_hist.items():
         print(k+":")
         print("  ",v)
-
+    #TODO create a results folder if it doesn't exist or set path as parameter
     with open('results/best_sol_'+session_id+'.txt', 'w') as f:
         # f.write("XAI solution:\n")
         # f.write(str(score_hist['xai_sol'][best_performing_solution]))
