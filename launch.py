@@ -77,6 +77,7 @@ def main(dataset_path, label, task, model_path=None, question=None, xai_list=Non
     context["scaling"] = scaling
     context["weights"] = weights
     context["distance"] = distance
+    context["explanations"] = []
 
     # TODO Set it as a class to check the values and do the operations above
 

@@ -73,7 +73,6 @@ def get_parameters(xai_sol, score_hist, hpo, properties_list, context):
         parameters['nb_proto'] = 3
         if xai_sol == 'MMD':
             parameters['gamma'] = None
-            # parameters['ktype'] = 0
         if xai_sol == 'Protodash':
             parameters['kernelType'] = 'other'
             parameters['sigma'] = 2
@@ -145,41 +144,12 @@ def gp_optimization(xai_sol, score_hist, properties_list, context, epochs):
             score = score_hist["aggregated_score"][-1]
             return score
 
-        # parameters['nb_proto'] = 3
-        # if xai_sol == 'MMD':
-        #     parameters['gamma'] = None
-        #     # parameters['ktype'] = 0
-        # if xai_sol == 'Protodash':
-        #     parameters['kernelType'] = 'other'
-        #     parameters['sigma'] = 2
-        # if xai_sol == 'kmedoids':
-        #     parameters['metric'] = "euclidean"
-        #     parameters['method'] = "alternate"
-        #     parameters['init'] = "build"
-        #     parameters['max_iter'] = 300
-
-    # 'MMD':{
-    #       'gamma':[0,1],
-    #     #   'ktype':[0,1]
-    #     },
-    # 'Protodash':{
-    #     #   'kernelType':['Gaussian','other'],
-    #       'kernelType':['other'],
-    #       'sigma':[0,30]
-    #     },
-    # 'kmedoids':{
-    #       'metric':["euclidean","manhattan","cosine"],
-    #       'method':["alternate","pam"],
-    #       'init':["random", "heuristic", "k-medoids++", "build"],
-    #       'max_iter':[0,300]
-    #     }
-
     if xai_sol == 'MMD':
         pbounds = {'nb_proto': (2,min(np.unique(context["y"],return_counts=True)[1])), 'gamma':(0,1)}
-        init_points = 5**len(pbounds)
+        # init_points = 3**2
 
         def f(nb_proto,gamma):
-            parameters = {'num_samples':int(np.round(nb_proto)),'gamma':gamma}
+            parameters = {'nb_proto':int(nb_proto),'gamma':gamma}
             for property in properties_list:
                 property_score = evaluate(xai_sol, parameters, property, context)
                 score_hist[property].append(property_score)
@@ -188,12 +158,16 @@ def gp_optimization(xai_sol, score_hist, properties_list, context, epochs):
             return score
 
     if xai_sol == 'Protodash':
-        pbounds = {'nb_proto': (2,min(np.unique(context["y"],return_counts=True)[1])),
-                    'sigma':(0,30)}
-        init_points = 5**len(pbounds)
+        #parameters['kernelType'] = choice(hp_possible_values["Protodash"]["kernelType"])
+        pbounds = {'nb_proto': (2,min(np.unique(context["y"],return_counts=True)[1])-2),
+                    'sigma':(0,30),
+                    'kernelType':(0,1)}
+        # init_points = 3**2
 
-        def f(nb_proto,sigma):
-            parameters = {'num_samples':int(np.round(nb_proto)),'sigma':sigma}
+        def f(nb_proto,sigma,kernelType):
+            parameters = {'nb_proto':int(nb_proto),'sigma':sigma}
+            parameters['kernelType'] = hp_possible_values["Protodash"]["kernelType"][int(np.round(kernelType))]
+            # parameters['kernelType'] = 'other'
             for property in properties_list:
                 property_score = evaluate(xai_sol, parameters, property, context)
                 score_hist[property].append(property_score)
@@ -207,11 +181,11 @@ def gp_optimization(xai_sol, score_hist, properties_list, context, epochs):
                     'method':(0,1),
                     'init':(0,3),
                     'max_iter':(0,300)}
-        init_points = 5**len(pbounds)
+        # init_points = 3**2
 
         def f(nb_proto, metric, method, init, max_iter):
             parameters = {}
-            parameters['nb_proto'] = int(np.round(nb_proto))
+            parameters['nb_proto'] = int(nb_proto)
             parameters['metric'] = hp_possible_values["kmedoids"]["metric"][int(np.round(metric))]
             parameters['method'] = hp_possible_values["kmedoids"]["method"][int(np.round(method))]
             parameters['init'] = hp_possible_values["kmedoids"]["init"][int(np.round(init))]
@@ -224,7 +198,7 @@ def gp_optimization(xai_sol, score_hist, properties_list, context, epochs):
             return score
     
     # init_points = 3*len(pbounds)#TODO find better init (square is better but expensive)
-
+    init_points = 3**2
     optimizer = BayesianOptimization(
         f=f,
         pbounds=pbounds,

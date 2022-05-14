@@ -249,9 +249,29 @@ def compute_diversity(xai_sol:str, parameters:str, context:dict):
         scores.append(np.sum(dists)/(n**2-n))
     return np.mean(scores)
 
+def compute_diversity_v2(prototypes,context):
+    #TODO add docstring
+    distance = context['distance']
+    scores = []
+    #for each subset of data evaluate their prototypes
+    for p in prototypes:
+        dists = pairwise_distances(p,metric=distance)
+        n = len(dists)
+        scores.append(np.sum(dists)/(n**2-n))
+    return np.mean(scores)
+
 def compute_non_representativeness(xai_sol:str, parameters:str, context:dict):
     #TODO add docstring
     prototypes = get_prototypes(xai_sol, parameters, context)
+    distance = context['distance']
+    X = context['X']
+    scores = []
+    for p in prototypes:
+        scores.append(np.mean(np.min(pairwise_distances(X,p,metric=distance),axis=1)))
+    return -np.mean(scores)
+
+def compute_non_representativeness_v2(prototypes, context:dict):
+    #TODO add docstring
     distance = context['distance']
     X = context['X']
     scores = []
@@ -282,6 +302,11 @@ def evaluate(xai_sol, parameters, property, context):
     # Set up of XAI solutions before computing evaluation
     if xai_sol in ['LIME','SHAP','Protodash']:
         context['explainer'] = set_up_explainer(xai_sol, parameters, context)
+
+    #Computing explanations once for all evaluation metrics
+    if xai_sol in ['MMD','kmedoids','Protodash']:
+        if context['explanations'] == []:
+            context['explanations'] = get_prototypes(xai_sol, parameters, context)
     
     # Computing evaluation for specified property
     if property == 'robustness':
@@ -297,10 +322,12 @@ def evaluate(xai_sol, parameters, property, context):
             score = -parameters['nb_proto']
     if property == 'diversity':
             if context['question']=="What":
-                score = compute_diversity(xai_sol,parameters,context)
+                # score = compute_diversity(xai_sol,parameters,context)
+                score = compute_diversity_v2(context['explanations'],context)
     if property == 'representativeness':
             if context['question']=="What":
-                score = compute_non_representativeness(xai_sol,parameters,context)
+                # score = compute_non_representativeness(xai_sol,parameters,context)
+                score = compute_non_representativeness_v2(context['explanations'],context)
     
     return score
 
@@ -335,18 +362,11 @@ def linear_scalarization(score_hist, properties_list, context):
             if scaling == "Std":
                 scaler = StandardScaler()
             score_hist["scaled_"+property] = scaler.fit_transform(np.asarray(score_hist[property]).reshape(-1, 1)).reshape(1, -1).tolist()[0]
-            # print("debug")
-            # print(score_hist[property])
-            # print(np.asarray(score_hist["scaled_"+property]))
-            # print(weights[i])
-            # print(len(properties_list))
-            # print("-----")
-            # print(np.asarray(score_hist["scaled_"+property]) * weights[i]/len(properties_list))
-            # print(score_hist["aggregated_score"])
             score_hist["aggregated_score"] += np.asarray(score_hist["scaled_"+property]).reshape(score_hist["aggregated_score"].shape) * weights[i]/len(properties_list)
         else :
             score_hist["scaled_"+property] = 0
 
     score_hist["aggregated_score"]=list(score_hist["aggregated_score"])
+    context['explanations']=[]
 
     return score_hist

@@ -28,9 +28,9 @@ hp_possible_values = {
         #   'ktype':[0,1]
         },
     'Protodash':{
-        #   'kernelType':['Gaussian','other'],
-          'kernelType':['other'],
-          'sigma':[0,30]
+          'kernelType':['Gaussian','other'],
+        #   'kernelType':['other'],
+          'sigma':[0,5]
         },
     'kmedoids':{
           'metric':["euclidean","manhattan","cosine"],

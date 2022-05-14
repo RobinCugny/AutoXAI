@@ -131,6 +131,7 @@ def get_prototypes(xai_sol, parameters, context):
         explainer = context['explainer']
         for c in np.unique(y):
             subset = X[np.where(y==c)]
+            # print(subset.shape,nb_proto,kernelType,sigma)
             with open(os.devnull, "w") as devnull:
                 old_stdout = sys.stdout
                 sys.stdout = devnull
