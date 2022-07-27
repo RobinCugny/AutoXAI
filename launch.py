@@ -8,7 +8,7 @@ from time import time
 
 #TODO rename file in core (according to paper)
 
-def main(dataset_path, label, task, model_path=None, question=None, xai_list=None, epochs=10, trials=None, properties_list=None, hpo=None, evstrat_list=None, verbose=False, seed=None, weights=[1,2,0.5], scaling="Std", session_id = 'proto', distance='cosine'):
+def main(dataset_path, label, task, model_path=None, question=None, xai_list=None, epochs=10, trials=None, properties_list=None, hpo=None, evstrat_list=None, verbose=False, seed=None, weights=[1,2,0.5], scaling="Std", session_id = 'diabetes-noIS', distance='cosine'):
     
     """
     Check parameters section
@@ -24,13 +24,6 @@ def main(dataset_path, label, task, model_path=None, question=None, xai_list=Non
         weights = [float(w) for w in weights]
     except ValueError:
         raise ValueError("Weights must be numerical values.")
-
-    if evstrat_list!=None:
-            early_stopping = True if 'ES' in evstrat_list else False
-            information_sharing = True if 'IS' in evstrat_list else False
-    else:
-        early_stopping = False
-        information_sharing = False
 
     start_time = time()
 
@@ -74,10 +67,18 @@ def main(dataset_path, label, task, model_path=None, question=None, xai_list=Non
     context["verbose"] = verbose
     context["task"] = task
     context["question"] = question
+    context["session_id"] = session_id
     context["scaling"] = scaling
     context["weights"] = weights
     context["distance"] = distance
     context["explanations"] = []
+
+    if evstrat_list!=None:
+        context["ES"] = True if 'ES' in evstrat_list else False
+        context["IS"] = True if 'IS' in evstrat_list else False
+    else:
+        context["ES"] = False
+        context["IS"] = False
 
     # TODO Set it as a class to check the values and do the operations above
 
@@ -139,7 +140,7 @@ def main(dataset_path, label, task, model_path=None, question=None, xai_list=Non
                 linear_scalarization(score_hist, properties_list, context)
                 # print("ES tot")
                 # print(len(score_hist['aggregated_score']) - np.argmax(score_hist['aggregated_score']))
-                if early_stopping and len(score_hist['aggregated_score']) - np.argmax(score_hist['aggregated_score']) > 5:
+                if context["ES"] and len(score_hist['aggregated_score']) - np.argmax(score_hist['aggregated_score']) > 5:
                     break
                 # print("aggregated_score",score_hist["aggregated_score"])
                 

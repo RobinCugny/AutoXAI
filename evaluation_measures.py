@@ -80,11 +80,10 @@ def compute_lipschitz_robustness(xai_sol, parameters, context):
     float
         Lipschitzian robustness score (loss) for the XAI solution with the given parameters.
     """    
-    es=True
-    IS=True
-    session_id = '0'
-    #TODO set as parameters
-    
+    es=context["ES"]
+    IS=context["IS"]
+    session_id = context["session_id"]
+
     X=context["X"]
     verbose=context["verbose"]
     eps = list(np.std(X, axis=0)*0.1)
@@ -104,7 +103,13 @@ def compute_lipschitz_robustness(xai_sol, parameters, context):
         # print('Robustness uses previously computed points')
         x_opts = pickle.load(open(path, "rb"))
         for i in tqdm(range(len(x_opts))):
-            get_local_exp(xai_sol, X[i], parameters, context)
+            if parameters['nfeatures']!=len(context["feature_names"]):
+                get_local_exp(xai_sol, X[i], parameters, context)
+            else:
+                parameters['most_influent_features'] = list(np.arange(0,parameters['nfeatures']))
+                
+            if xai_sol=='LIME':
+                context['explainer']=set_up_explainer(xai_sol, parameters, context)
             lip = lipschitz_ratio(X[i],x_opts[i],exp)
             list_lip.append(lip)
 
@@ -118,18 +123,26 @@ def compute_lipschitz_robustness(xai_sol, parameters, context):
             lwr = (x - eps).flatten()
             upr = (x + eps).flatten()
             bounds = list(zip(*[lwr, upr]))
-            get_local_exp(xai_sol, X[i], parameters, context)
+            if parameters['nfeatures']!=len(context["feature_names"]):
+                get_local_exp(xai_sol, X[i], parameters, context)
+            else:
+                parameters['most_influent_features'] = list(np.arange(0,parameters['nfeatures']))
             f = partial(lipschitz_ratio, x, function=exp,
                         reshape=orig_shape, minus=True)
             res = gp_minimize(f, bounds, n_calls=n_calls,
                                 verbose=verbose, n_jobs=njobs)
             lip, x_opt = -res['fun'], np.array(res['x'])
-            list_lip.append(lip)
-            x_opts.append(x_opt)
+            
+            # TODO fix the pb with IS on LIME (is it even possible or important ?)
+            if xai_sol=='LIME':
+                context['explainer']=set_up_explainer(xai_sol, parameters, context)
+                #Recalculate to have a normal initialization
+                lip = lipschitz_ratio(X[i],x_opt,exp)
 
-            # print(" ES rob")
-            # print(abs(np.mean(list_lip[:-1])-np.mean(list_lip)))
-            # print(np.mean(list_lip)/10)
+            list_lip.append(lip)
+            # print("from gp_minimize",lip)
+            # print("from recalculation",lipschitz_ratio(X[i],x_opt,exp))
+            x_opts.append(x_opt)
             
             if es and abs(np.mean(list_lip[:-1])-np.mean(list_lip)) <= np.mean(list_lip)/10 and i>5:
                 stable_i+=1
@@ -140,7 +153,8 @@ def compute_lipschitz_robustness(xai_sol, parameters, context):
 
     if IS and not os.path.exists(path):
         pickle.dump(x_opts, open(path, "wb"))
-
+    # print(x_opts)
+    # print(list_lip)
     score = np.mean(list_lip)
     return -score
 
@@ -163,9 +177,9 @@ def compute_infidelity(xai_sol, parameters, context):
     float
         Infidelity score (loss) for the XAI solution with the given parameters.
     """    
-    es=True
-    IS=True
-    session_id='0'
+    es = context["ES"]
+    IS = context["IS"]
+    session_id = context["session_id"]
     X = context["X"]
     model = context['model']
     eps = list(np.std(X, axis=0)*0.1)

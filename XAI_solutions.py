@@ -38,10 +38,10 @@ def set_up_explainer(xai_sol, parameters, context):
         verbose=context["verbose"]
         mode=context["task"]
         if mode == 'regression':
-            explainer = lime.lime_tabular.LimeTabularExplainer(training_data=X, feature_names=feature_names, training_labels=y, verbose=verbose, mode=mode, discretize_continuous=False)    
+            explainer = lime.lime_tabular.LimeTabularExplainer(training_data=X, feature_names=feature_names, training_labels=y, verbose=verbose, mode=mode, discretize_continuous=False,random_state=0)    
         else:
             class_names = np.unique(y)
-            explainer = lime.lime_tabular.LimeTabularExplainer(training_data=X, feature_names=feature_names, class_names=class_names, verbose=verbose, mode=mode, discretize_continuous=False)    
+            explainer = lime.lime_tabular.LimeTabularExplainer(training_data=X, feature_names=feature_names, class_names=class_names, verbose=verbose, mode=mode, discretize_continuous=False,random_state=0)    
 
     
     elif xai_sol == "SHAP":

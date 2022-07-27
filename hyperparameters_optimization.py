@@ -68,9 +68,12 @@ def get_parameters(xai_sol, score_hist, hpo, properties_list, context):
             parameters['summarize'] = "KernelExplainer"
             parameters['nsamples'] = 2048
             parameters['l1_reg'] = "auto"
-        parameters['nfeatures'] = len(context["feature_names"])
 
-        parameters['nb_proto'] = 3
+        if context["question"]=="Why":
+            parameters['nfeatures'] = len(context["feature_names"])
+        if context["question"]=="What":
+            parameters['nb_proto'] = 3
+            
         if xai_sol == 'MMD':
             parameters['gamma'] = None
         if xai_sol == 'Protodash':
