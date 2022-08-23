@@ -7,11 +7,11 @@ python launch.py data/diabetes.csv "measure of disease progression" regression -
 ```
 or
 ```
-python launch.py data/pima_indians_diabetes.csv "Outcome" classification -m models/MLPRegressor_pima_indians.p -q "Why" -p "robustness,fidelity,conciseness" --hpo "gp" --evstrat "ES,IS" -w "1,2,0.5" --scaling "Std" -s 0 -e 25
+python launch.py data/pima_indians_diabetes.csv "Outcome" classification -m models/MLPClassifier_pima_indians.p -q "Why" -p "robustness,fidelity,conciseness" --hpo "gp" --evstrat "ES,IS" -w "1,2,0.5" --scaling "Std" -s 0 -e 25
 ```
 or
 ```
-python launch.py data/SPAM_vec.csv "class" classification -q "What" -p "diversity,representativeness,conciseness" --hpo "gp" -w "1,2,2" -s 0 -e 50
+python launch.py data/SPAM_vec.csv "class" classification -q "What" -p "diversity,representativeness,conciseness" --hpo "gp" -w "1,2,2" -s 0 -e 25
 ```
 
 ## Help:

@@ -8,7 +8,7 @@ from time import time
 
 #TODO rename file in core (according to paper)
 
-def main(dataset_path, label, task, model_path=None, question=None, xai_list=None, epochs=10, trials=None, properties_list=None, hpo=None, evstrat_list=None, verbose=False, seed=None, weights=[1,2,0.5], scaling="Std", session_id = 'diabetes-noIS', distance='cosine'):
+def main(dataset_path, label, task, model_path=None, question=None, xai_list=None, epochs=10, trials=None, properties_list=None, hpo=None, evstrat_list=None, verbose=False, seed=None, weights=[1,2,0.5], scaling="Std", session_id = 'session-name', distance='cosine'):
     
     """
     Check parameters section
