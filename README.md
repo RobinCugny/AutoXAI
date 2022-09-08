@@ -1,6 +1,9 @@
 # AutoXAI
 A framework to automatically select the XAI solution you need
 
+## Acknowledgement
+This framework has been proposed in 'link here'. It is a collaboration between IRIT and SolutionData Group and the authors are Robin Cugny, Julien Aligon, Max Chevalier, Geoffrey Roman Jimenez and Olivier Teste.
+
 ## Launch experiment of the paper:
 ```
 python launch.py data/diabetes.csv "measure of disease progression" regression -m models/MLPRegressor_diabetes.p -q "Why" -p "robustness,fidelity,conciseness" --hpo "gp" --evstrat "ES,IS" -w "1,2,0.5" --scaling "Std" -s 0 -e 25
@@ -46,3 +49,6 @@ optional arguments:
   --verbose             Launch AutoXAI with verbosity on True.
   -s SEED, --seed SEED  Set up a seed for random generated numbers.
 ```
+
+
+For any question concerning the paper or the framework, please contact me at robin.cugny@irit.fr
