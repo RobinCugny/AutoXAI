@@ -1,8 +1,11 @@
 # AutoXAI
-A framework to automatically select the XAI solution you need
+A framework for selecting and tuning the XAI (eXplainable AI) solutions you need.
 
 ## Acknowledgement
-This framework has been proposed in 'link here'. It is a collaboration between IRIT and SolutionData Group and the authors are Robin Cugny, Julien Aligon, Max Chevalier, Geoffrey Roman Jimenez and Olivier Teste.
+This framework has been proposed in [this paper](https://arxiv.org/abs/2210.02795 "AutoXAI: arXiv version"). It is a collaboration between IRIT and SolutionData Group and the authors are Robin Cugny, Julien Aligon, Max Chevalier, Geoffrey Roman Jimenez and Olivier Teste.
+
+Special thanks to Elodie Escriva for helping me with MMD-critic code and for her advice. Thanks to Vincent Fraysse for the help he gave me on the code, the scientific discussions and his unfailing support.
+
 
 ## Launch experiment of the paper:
 ```
