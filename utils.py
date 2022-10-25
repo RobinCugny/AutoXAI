@@ -2,6 +2,10 @@
 MIT License
 
 Copyright (c) 2022 Robin Cugny, IRIT and SolutionData Group, <robin.cugny@irit.fr>
+Copyright (c) 2022 Julien Aligon, IRIT, <julien.aligon@irit.fr>
+Copyright (c) 2022 Max Chevalier, IRIT, <max.chevalier@irit.fr>
+Copyright (c) 2022 Geoffrey Roman Jimenez, SolutionData Group, <groman-jimenez@solutiondatagroup.fr>
+Copyright (c) 2022 Olivier Teste, IRIT, <olivier.teste@irit.fr>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -28,13 +32,14 @@ import pickle
 
 questions_to_xai_sol = {'Why':['LIME','SHAP'],
                         'What':['MMD','Protodash','kmedoids']}
-# questions_to_xai_sol = {'Why':['LIME']}
+
 #TODO use dict above to populate list below
 xai_sol = ['LIME','SHAP','MMD','Protodash','kmedoids']
 
 hpo_list = ["random", "gp"]
 
 #TODO add discretize continuous
+#TODO change for a data class
 hp_possible_values = {
     'LIME':
         {
@@ -53,7 +58,6 @@ hp_possible_values = {
         },
     'Protodash':{
           'kernelType':['Gaussian','other'],
-        #   'kernelType':['other'],
           'sigma':[0,5]
         },
     'kmedoids':{
@@ -64,19 +68,6 @@ hp_possible_values = {
         }
 
 }
-
-        # if xai_sol == 'MMD':
-        #     parameters['gamma'] = None
-        #     parameters['ktype'] = 0
-        # if xai_sol == 'Protodash':
-        #     parameters['kernelType'] = 'other'
-        #     parameters['sigma'] = 2
-        # if xai_sol == 'kmedoids':
-        #     parameters['metric'] = "euclidean"
-        #     parameters['method'] = "alternate"
-        #     parameters['init'] = "heuristic"
-        #     parameters['max_iter'] = 300
-
 
 def reorder_attributes(att, feature_names):
     """Sort the feature importances explanations using the same ordrer as the features in data.
@@ -96,6 +87,7 @@ def reorder_attributes(att, feature_names):
     """        
     return [att[f] for f in feature_names if f in att.keys()]
 
+#TODO More genericity in data types
 def load_dataset(path, label):
     """Loads a local file to use it as a dataset and use label as the target for the model.
 

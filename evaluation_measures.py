@@ -2,6 +2,10 @@
 MIT License
 
 Copyright (c) 2022 Robin Cugny, IRIT and SolutionData Group, <robin.cugny@irit.fr>
+Copyright (c) 2022 Julien Aligon, IRIT, <julien.aligon@irit.fr>
+Copyright (c) 2022 Max Chevalier, IRIT, <max.chevalier@irit.fr>
+Copyright (c) 2022 Geoffrey Roman Jimenez, SolutionData Group, <groman-jimenez@solutiondatagroup.fr>
+Copyright (c) 2022 Olivier Teste, IRIT, <olivier.teste@irit.fr>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -80,7 +84,6 @@ def lipschitz_ratio(x, y, function, reshape=None, minus=False):
         # Necessary because gpopt requires to flatten things, need to restrore expected sshape here
         x = x.reshape(reshape)
         y = y.reshape(reshape)
-    #print(x.shape, x.ndim)
     multip = -1 if minus else 1
 
     return multip * np.linalg.norm(fx - fy) / np.linalg.norm(x - y)
@@ -124,7 +127,6 @@ def compute_lipschitz_robustness(xai_sol, parameters, context):
 
     path = 'results/x_opts_'+xai_sol+session_id+'.p'
     if IS and os.path.exists(path):
-        # print('Robustness uses previously computed points')
         x_opts = pickle.load(open(path, "rb"))
         for i in tqdm(range(len(x_opts))):
             if parameters['nfeatures']!=len(context["feature_names"]):
@@ -140,7 +142,6 @@ def compute_lipschitz_robustness(xai_sol, parameters, context):
     else:
         x_opts = []
         stable_i=0
-        # for i in tqdm(range(2)):
         for i in tqdm(range(len(X))):
             x = X[i]
             orig_shape = x.shape
@@ -164,8 +165,6 @@ def compute_lipschitz_robustness(xai_sol, parameters, context):
                 lip = lipschitz_ratio(X[i],x_opt,exp)
 
             list_lip.append(lip)
-            # print("from gp_minimize",lip)
-            # print("from recalculation",lipschitz_ratio(X[i],x_opt,exp))
             x_opts.append(x_opt)
             
             if es and abs(np.mean(list_lip[:-1])-np.mean(list_lip)) <= np.mean(list_lip)/10 and i>5:
@@ -177,8 +176,6 @@ def compute_lipschitz_robustness(xai_sol, parameters, context):
 
     if IS and not os.path.exists(path):
         pickle.dump(x_opts, open(path, "wb"))
-    # print(x_opts)
-    # print(list_lip)
     score = np.mean(list_lip)
     return -score
 
@@ -212,7 +209,6 @@ def compute_infidelity(xai_sol, parameters, context):
 
     path = 'results/perturb_infs_'+xai_sol+session_id+'.p'
     if IS and os.path.exists(path):
-        # print('Fidelity uses previously computed points')
         perturb_infs = pickle.load(open(path, "rb"))
         for i in tqdm(range(len(perturb_infs))):
             x = X[i]
@@ -221,17 +217,12 @@ def compute_infidelity(xai_sol, parameters, context):
             exp_x = np.matmul(x[parameters['most_influent_features']],np.asarray(exp).T)
             for j in range(nb_pert):
                 x0 = perturb_infs[i]['x0'][j]
-                # exp0 = get_local_exp(xai_sol, x0, parameters, context)[:parameters['nfeatures']]
-                # exp_x0 = np.matmul(x0[:parameters['nfeatures']],np.asarray(exp0).T)
                 exp_x0 = np.matmul(x0[parameters['most_influent_features']],np.asarray(exp).T)
                 pred_x = perturb_infs[i]['pred_x'][j]
                 pred_x0 = perturb_infs[i]['pred_x0'][j]
-                # print("exp_x-exp_x0",exp_x-exp_x0)
-                # print("pred_x-pred_x0",pred_x-pred_x0)
                 pertubation_diff.append((exp_x-exp_x0-(pred_x-pred_x0))**2)
             list_inf.append(np.mean(pertubation_diff))
     else:
-        # for i in tqdm(range(2)):
         perturb_infs = []
         stable_i=0
         for i in tqdm(range(len(X))):
@@ -242,8 +233,6 @@ def compute_infidelity(xai_sol, parameters, context):
             exp_x = np.matmul(x[parameters['most_influent_features']],np.asarray(exp).T)
             for j in range(nb_pert):
                 x0 = x + np.random.rand(len(x))*2*eps-eps
-                # exp0 = get_local_exp(xai_sol, x0, parameters, context)[:parameters['nfeatures']]
-                # exp_x0 = np.matmul(x0[:parameters['nfeatures']],np.asarray(exp0).T)
                 exp_x0 = np.matmul(x0[parameters['most_influent_features']],np.asarray(exp).T)
                 if context['task']=='regression':
                     pred_x = model.predict(x.reshape(1, -1))[0]
@@ -260,9 +249,6 @@ def compute_infidelity(xai_sol, parameters, context):
             perturb_infs.append(pert)
 
             list_inf.append(np.mean(pertubation_diff))
-            # print(" ES fid")
-            # print(abs(np.mean(list_inf[:-1])-np.mean(list_inf)))
-            # print(np.mean(list_inf)/10)
             if es and abs(np.mean(list_inf[:-1])-np.mean(list_inf)) <= np.mean(list_inf)/10 and i>5:
                 stable_i+=1
                 if stable_i > 5:
@@ -275,20 +261,22 @@ def compute_infidelity(xai_sol, parameters, context):
     score = np.mean(list_inf)
     return -score
 
-def compute_diversity(xai_sol:str, parameters:str, context:dict):
-    #TODO add docstring
-    prototypes = get_prototypes(xai_sol, parameters, context)
-    distance = context['distance']
-    scores = []
-    #for each subset of data evaluate their prototypes
-    for p in prototypes:
-        dists = pairwise_distances(p,metric=distance)
-        n = len(dists)
-        scores.append(np.sum(dists)/(n**2-n))
-    return np.mean(scores)
-
 def compute_diversity_v2(prototypes,context):
-    #TODO add docstring
+    """
+    Computes the diversity score for the prototypes previously produced.
+
+    Parameters
+    ----------
+    prototypes : list
+        list of c ndarray with c the number of classes in the dataset
+    context : dict
+        Information of the context that may change the process.
+
+    Returns
+    -------
+    float
+        Diversity score (loss) for the prototypes.
+    """    
     distance = context['distance']
     scores = []
     #for each subset of data evaluate their prototypes
@@ -297,19 +285,23 @@ def compute_diversity_v2(prototypes,context):
         n = len(dists)
         scores.append(np.sum(dists)/(n**2-n))
     return np.mean(scores)
-
-def compute_non_representativeness(xai_sol:str, parameters:str, context:dict):
-    #TODO add docstring
-    prototypes = get_prototypes(xai_sol, parameters, context)
-    distance = context['distance']
-    X = context['X']
-    scores = []
-    for p in prototypes:
-        scores.append(np.mean(np.min(pairwise_distances(X,p,metric=distance),axis=1)))
-    return -np.mean(scores)
 
 def compute_non_representativeness_v2(prototypes, context:dict):
-    #TODO add docstring
+    """
+    Computes the non representativeness score for the prototypes previously produced.
+
+    Parameters
+    ----------
+    prototypes : list
+        list of c ndarray with c the number of classes in the dataset
+    context : dict
+        Information of the context that may change the process.
+
+    Returns
+    -------
+    float
+        Non representativeness score (loss) for the prototypes.
+    """ 
     distance = context['distance']
     X = context['X']
     scores = []

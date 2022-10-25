@@ -2,6 +2,10 @@
 MIT License
 
 Copyright (c) 2022 Robin Cugny, IRIT and SolutionData Group, <robin.cugny@irit.fr>
+Copyright (c) 2022 Julien Aligon, IRIT, <julien.aligon@irit.fr>
+Copyright (c) 2022 Max Chevalier, IRIT, <max.chevalier@irit.fr>
+Copyright (c) 2022 Geoffrey Roman Jimenez, SolutionData Group, <groman-jimenez@solutiondatagroup.fr>
+Copyright (c) 2022 Olivier Teste, IRIT, <olivier.teste@irit.fr>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -37,13 +41,8 @@ def main(dataset_path, label, task, model_path=None, question=None, xai_list=Non
     """
     Check parameters section
     """    
-    # weights=[-1,-1]
-    # weights=[-1,-2,-0.5] #TODO set these as parameters
-    # # scaling="MinMax"
-    # scaling="Std"
-    # session_id = '0'
-    # evstrat_list = ['ES','IS']
 
+    #TODO refactor parameters checking step (in a class/method)
     try:
         weights = [float(w) for w in weights]
     except ValueError:
@@ -75,14 +74,14 @@ def main(dataset_path, label, task, model_path=None, question=None, xai_list=Non
                 if xai not in questions_to_xai_sol[question]:
                     raise ValueError("Some XAI solutions are not in the same set or are not implemented yet")
 
-    #TODO convert properties in evaluation measures
+    #TODO convert properties in evaluation measures in a method
 
     """
     Context construction
     """  
-
+    #TODO change context dict to data class (checking methods) 
     X,y,feature_names = load_dataset(dataset_path, label)
-
+    #TODO convert it into enum class (task, question, scaling, distance, ES+IS) (Color.RED = Color['RED'])
     context = {}
 
     context["X"] = X
@@ -111,13 +110,15 @@ def main(dataset_path, label, task, model_path=None, question=None, xai_list=Non
         if model_path == None:
             raise ValueError("Model is necessary for this question")
         context['model'] = load_model(model_path)
-
+    
+    #TODO convert score_hist into data class
     score_hist = {}
     score_hist["xai_sol"] = []
     score_hist["epoch"] = []
     score_hist["aggregated_score"] = []
     score_hist["parameters"] = []
 
+    #TODO to data class property
     for property in properties_list:
         score_hist[property] = []
         score_hist["scaled_"+property] = []
@@ -131,19 +132,24 @@ def main(dataset_path, label, task, model_path=None, question=None, xai_list=Non
 
         parameters = get_parameters(xai_sol, score_hist, "default", properties_list, context)
         score_hist["parameters"].append(parameters)
+
+        #TODO check if fidelity is in properties do in context data class
         if question == "Why":
             get_exp_std(xai_sol, parameters, context)
+
         print("  parameters:",parameters)
         for property in properties_list:
             score = evaluate(xai_sol, parameters, property, context)
             score_hist[property].append(score)
             print("    "+property+" loss:",score)
-        linear_scalarization(score_hist, properties_list, context) #TODO remove ? This does not make any sens at this point
+        linear_scalarization(score_hist, properties_list, context) #TODO remove ???? (not sure) This does not make any sens at this point
         
     # TODO keep the best performing (nb = trials)
     if trials != None:
         pass
 
+    # core of AutoXAI
+    #TODO hpo uniformization for random and gp (convert in a method)
     for xai_sol in xai_list:
         print("XAI solution:",xai_sol)
         if hpo == "random":
@@ -162,15 +168,11 @@ def main(dataset_path, label, task, model_path=None, question=None, xai_list=Non
                     score_hist[property].append(score)
 
                 linear_scalarization(score_hist, properties_list, context)
-                # print("ES tot")
-                # print(len(score_hist['aggregated_score']) - np.argmax(score_hist['aggregated_score']))
                 if context["ES"] and len(score_hist['aggregated_score']) - np.argmax(score_hist['aggregated_score']) > 5:
                     break
-                # print("aggregated_score",score_hist["aggregated_score"])
                 
         elif hpo == "gp":
             results = gp_optimization(xai_sol, score_hist, properties_list, context, epochs)
-            # print(results)
             for e, r in enumerate(results):
                 score_hist["xai_sol"].append(xai_sol)
                 score_hist["epoch"].append(e)
@@ -179,6 +181,7 @@ def main(dataset_path, label, task, model_path=None, question=None, xai_list=Non
         else:
             raise NameError("The optimization", hpo,"is not in", hpo_list)
     
+    #TODO create a method to display
     # Display best performing XAI solution with details
     best_performing_solution = np.argmax(score_hist['aggregated_score'])
     print("\n---------------------- Best performing XAI solution ----------------------")
@@ -199,13 +202,10 @@ def main(dataset_path, label, task, model_path=None, question=None, xai_list=Non
     for k,v in score_hist.items():
         print(k+":")
         print("  ",v)
+
+    #TODO create a method to save in a file
     #TODO create a results folder if it doesn't exist or set path as parameter
     with open('results/best_sol_'+session_id+'.txt', 'w') as f:
-        # f.write("XAI solution:\n")
-        # f.write(str(score_hist['xai_sol'][best_performing_solution]))
-        # f.write("\nparameters:\n")
-        # f.write(str(score_hist['parameters'][best_performing_solution])+"\n")
-        
         for i in np.argsort(score_hist['aggregated_score'])[::-1]:
             f.write('\n\nxai sol: '+str(score_hist['xai_sol'][i]))
             f.write('\nparams: '+str(score_hist['parameters'][i]))
@@ -222,6 +222,7 @@ def main(dataset_path, label, task, model_path=None, question=None, xai_list=Non
     return 0
 
 if __name__ == "__main__":
+    #TODO update the help messages
     parser = argparse.ArgumentParser(
         'Launch AutoXAI framework to find the XAI solution that maximize specified properties.')
     parser.add_argument('dataset', help='Path to the dataset that is used for the model training.')
@@ -264,5 +265,7 @@ if __name__ == "__main__":
         properties_list = None
     if evstrat_list == ['None']:
         evstrat_list = None
+
+    #TODO to enum class : hpo, xai_list, evstratlist, task, question, scaling, distance
 
     main(dataset_path, label, task, model_path, question, xai_list, epochs, trials, properties_list, hpo, evstrat_list, verbose, seed, weights, scaling)

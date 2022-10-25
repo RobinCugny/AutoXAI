@@ -2,6 +2,10 @@
 MIT License
 
 Copyright (c) 2022 Robin Cugny, IRIT and SolutionData Group, <robin.cugny@irit.fr>
+Copyright (c) 2022 Julien Aligon, IRIT, <julien.aligon@irit.fr>
+Copyright (c) 2022 Max Chevalier, IRIT, <max.chevalier@irit.fr>
+Copyright (c) 2022 Geoffrey Roman Jimenez, SolutionData Group, <groman-jimenez@solutiondatagroup.fr>
+Copyright (c) 2022 Olivier Teste, IRIT, <olivier.teste@irit.fr>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -51,6 +55,7 @@ def download_dataset(name):
         df_y = pd.Series(y,name='diabete progression')
         df_X["measure of disease progression"] = df_y
         df_X.to_csv("data/diabetes.csv",index=False)
+    #TODO redo with the API if possible maybe without kaggle
     elif name=="pima indians":
         print("Go to https://www.kaggle.com/uciml/pima-indians-diabetes-database")
         print("Join the competition if necessary, download the dataset, extract it and copy it in the data/ folder.")

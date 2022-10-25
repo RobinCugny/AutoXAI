@@ -2,6 +2,10 @@
 MIT License
 
 Copyright (c) 2022 Robin Cugny, IRIT and SolutionData Group, <robin.cugny@irit.fr>
+Copyright (c) 2022 Julien Aligon, IRIT, <julien.aligon@irit.fr>
+Copyright (c) 2022 Max Chevalier, IRIT, <max.chevalier@irit.fr>
+Copyright (c) 2022 Geoffrey Roman Jimenez, SolutionData Group, <groman-jimenez@solutiondatagroup.fr>
+Copyright (c) 2022 Olivier Teste, IRIT, <olivier.teste@irit.fr>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -84,7 +88,8 @@ def get_parameters(xai_sol, score_hist, hpo, properties_list, context):
             parameters['nfeatures'] = randint(1,len(context["feature_names"]))
         else:
             parameters['nfeatures'] = len(context["feature_names"])
-
+    
+    #TODO not appropriate here, in utils ? in a data class ?
     if hpo == "default":
         if xai_sol == 'LIME':
             parameters['num_samples'] = 5000
@@ -109,7 +114,6 @@ def get_parameters(xai_sol, score_hist, hpo, properties_list, context):
             parameters['init'] = "build"
             parameters['max_iter'] = 300
 
-        # parameters['most_influent_features'] = list(np.arange(parameters['nfeatures']))
     return parameters
 
 def gp_optimization(xai_sol, score_hist, properties_list, context, epochs):
@@ -154,7 +158,7 @@ def gp_optimization(xai_sol, score_hist, properties_list, context, epochs):
     if xai_sol=='SHAP':
         pbounds = {'summarize':(0,1),'nsamples': (10, 2048), 'l1_reg':(0,3), 'num_features':(1,len(context["feature_names"])), 'nfeatures':(1,len(context["feature_names"]))}
         init_points = 5**2
-        #num_features is for l1_reg and nfeatures for size of explanation vector
+        # num_features is for l1_reg and nfeatures for size of explanation vector
         def f(summarize, nsamples, l1_reg, num_features, nfeatures):
             parameters = {}
             parameters['nsamples'] = int(nsamples)
@@ -185,7 +189,6 @@ def gp_optimization(xai_sol, score_hist, properties_list, context, epochs):
             return score
 
     if xai_sol == 'Protodash':
-        #parameters['kernelType'] = choice(hp_possible_values["Protodash"]["kernelType"])
         pbounds = {'nb_proto': (2,min(np.unique(context["y"],return_counts=True)[1])-2),
                     'sigma':(0,30),
                     'kernelType':(0,1)}
@@ -194,7 +197,6 @@ def gp_optimization(xai_sol, score_hist, properties_list, context, epochs):
         def f(nb_proto,sigma,kernelType):
             parameters = {'nb_proto':int(nb_proto),'sigma':sigma}
             parameters['kernelType'] = hp_possible_values["Protodash"]["kernelType"][int(np.round(kernelType))]
-            # parameters['kernelType'] = 'other'
             for property in properties_list:
                 property_score = evaluate(xai_sol, parameters, property, context)
                 score_hist[property].append(property_score)

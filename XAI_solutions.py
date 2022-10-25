@@ -2,6 +2,10 @@
 MIT License
 
 Copyright (c) 2022 Robin Cugny, IRIT and SolutionData Group, <robin.cugny@irit.fr>
+Copyright (c) 2022 Julien Aligon, IRIT, <julien.aligon@irit.fr>
+Copyright (c) 2022 Max Chevalier, IRIT, <max.chevalier@irit.fr>
+Copyright (c) 2022 Geoffrey Roman Jimenez, SolutionData Group, <groman-jimenez@solutiondatagroup.fr>
+Copyright (c) 2022 Olivier Teste, IRIT, <olivier.teste@irit.fr>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -134,9 +138,6 @@ def get_local_exp(xai_sol, x, parameters, context, update_order_feat=True):
         else:
             pred=int(m.predict(x.reshape(1, -1)))
             e = explainer.shap_values(x,nsamples=nsamples,l1_reg=l1_reg)[pred]
-        # print("------SHAP-----")
-        # print(x)
-        # print(e)
     if update_order_feat:
         most_influent_features = np.argsort(np.abs(e))[::-1][:parameters['nfeatures']]
         parameters['most_influent_features'] = most_influent_features
@@ -144,7 +145,24 @@ def get_local_exp(xai_sol, x, parameters, context, update_order_feat=True):
     return e
 
 def get_prototypes(xai_sol, parameters, context):
-    #TODO add docstring
+    """
+    Use the XAI solution with the corresponding parameters
+    to generate the prototypes.
+
+    Parameters
+    ----------
+    xai_sol : str
+        Name of the XAI solution that is initialized.
+    parameters : dict
+        Parameters of the XAI solution for the initialization.
+    context : dict
+        Information of the context that may change the process.
+
+    Returns
+    -------
+    float
+        Non representativeness score (loss) for the prototypes.
+    """    
     X=context['X']
     y=context['y']
     nb_proto = parameters['nb_proto']
@@ -155,7 +173,6 @@ def get_prototypes(xai_sol, parameters, context):
         explainer = context['explainer']
         for c in np.unique(y):
             subset = X[np.where(y==c)]
-            # print(subset.shape,nb_proto,kernelType,sigma)
             with open(os.devnull, "w") as devnull:
                 old_stdout = sys.stdout
                 sys.stdout = devnull
@@ -187,28 +204,27 @@ def get_prototypes(xai_sol, parameters, context):
     return prototypes
 
 def get_exp_std(xai_sol, parameters, context):
-    #TODO complete docstring
-    """ Compute the standard deviation of explanations to scale them for fidelity computation
+    """ 
+    Compute the standard deviation of explanations to scale them for fidelity computation
 
     Parameters
     ----------
-    xai_sol : _type_
-        _description_
-    parameters : _type_
-        _description_
-    context : _type_
-        _description_
+    xai_sol : str
+        Name of the XAI solution that is initialized.
+    parameters : dict
+        Parameters of the XAI solution for the initialization.
+    context : dict
+        Information of the context that may change the process.
 
     Returns
     -------
-    _type_
-        _description_
+    float
+        Standard deviation of explanations
     """    
     n=10
     X=context["X"]
     exp_values = []
     context['explainer'] = set_up_explainer(xai_sol, parameters, context)
-    # print(get_local_exp(xai_sol, X[0], parameters, context))
     for i in range(n):
         exp_values += get_local_exp(xai_sol, X[i], parameters, context)
     
