@@ -31,7 +31,7 @@ import argparse
 from sklearn.datasets import load_diabetes
 import pandas as pd
 
-
+# TODO add UCI SPAM dataset
 def download_dataset(name):
     """Downloads the corresponding dataset and formats it for AutoXAI
 
